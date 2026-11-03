@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Оплата — Oxidegrade</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; }
+    body { background: #050505; color: #c9d1d9; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+    .cashier-box { background: #111; border: 1px solid #222; border-radius: 16px; padding: 30px; width: 100%; max-width: 400px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.8); position: relative; }
+    
+    .back-btn { position: absolute; top: 15px; left: 15px; background: none; border: none; color: #8b949e; font-size: 20px; cursor: pointer; transition: color 0.2s; }
+    .back-btn:hover { color: #fff; }
+
+    h1 { font-size: 24px; color: #da3633; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
+    .subtitle { font-size: 13px; color: #8b949e; margin-bottom: 25px; }
+    
+    .amount-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px; }
+    .amount-btn { background: #1a1a1a; border: 1px solid #333; color: #fff; padding: 15px; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; transition: 0.2s; display: flex; flex-direction: column; align-items: center; gap: 5px; }
+    .amount-btn:hover { border-color: #da3633; }
+    .amount-btn.active { background: #da3633; border-color: #da3633; }
+    .price-tag { font-size: 12px; color: #8b949e; font-weight: normal; }
+    .amount-btn.active .price-tag { color: #ffd700; }
+
+    .custom-input { width: 100%; background: #0d1117; border: 1px solid #333; color: #fff; padding: 15px; border-radius: 8px; font-size: 16px; text-align: center; outline: none; margin-bottom: 10px; }
+    .custom-input:focus { border-color: #da3633; }
+    
+    .total-price { font-size: 20px; font-weight: bold; color: #fff; margin-bottom: 20px; }
+    .total-price span { color: #3fb950; }
+
+    .pay-btn { background: #238636; color: #fff; border: none; padding: 16px; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer; width: 100%; transition: 0.2s; }
+    .pay-btn:hover { background: #2ea043; }
+    .note { font-size: 11px; color: #8b949e; margin-top: 15px; }
+  </style>
+</head>
+<body>
+
+  <div class="cashier-box">
+    <button class="back-btn" onclick="try { window.close(); } catch(e) { history.back(); }" title="Вернуться в игру">← Назад</button>
+
+    <h1>Пополнение</h1>
+    <div class="subtitle">Курс: 50 монет = $2.31</div>
+
+    <div class="amount-grid">
+      <button class="amount-btn" onclick="setAmount(50, this)">
+        50 <span class="price-tag">$2.31</span>
+      </button>
+      <button class="amount-btn" onclick="setAmount(100, this)">
+        100 <span class="price-tag">$4.62</span>
+      </button>
+      <button class="amount-btn" onclick="setAmount(250, this)">
+        250 <span class="price-tag">$11.55</span>
+      </button>
+      <button class="amount-btn" onclick="setAmount(500, this)">
+        500 <span class="price-tag">$23.10</span>
+      </button>
+    </div>
+
+    <input type="number" id="customAmount" class="custom-input" placeholder="Своя сумма монет" min="50" oninput="updatePrice()">
+
+    <div class="total-price">К оплате: <span id="usdPrice">$0.00</span></div>
+
+    <button class="pay-btn" onclick="processPayment()">Перейти к оплате</button>
+    
+    <div class="note">После оплаты монеты зачислятся автоматически (в течение 1-2 минут).</div>
+  </div>
+
+  <script>
+    const PRICE_PER_50 = 2.31;
+
+    function setAmount(val, btnElement) {
+      document.getElementById("customAmount").value = val;
+      document.querySelectorAll('.amount-btn').forEach(btn => btn.classList.remove('active'));
+      if (btnElement) btnElement.classList.add('active');
+      updatePrice();
+    }
+
+    function updatePrice() {
+      const amount = parseFloat(document.getElementById("customAmount").value) || 0;
+      const usd = (amount / 50) * PRICE_PER_50;
+      document.getElementById("usdPrice").textContent = "$" + usd.toFixed(2);
+    }
+
+    function processPayment() {
+      const amount = parseFloat(document.getElementById("customAmount").value);
+      if (!amount || amount < 50) {
+        alert("Минимальная сумма пополнения — 50 монет!");
+        return;
+      }
+
+      const usd = ((amount / 50) * PRICE_PER_50).toFixed(2);
+
+      // ТУТ ДОЛЖНА БЫТЬ ИНТЕГРАЦИЯ С ПЛАТЕЖНЫМ ШЛЮЗОМ
+      // Например, создание счета через CryptoBot API или редирект на форму ЮKassa.
+      
+      // Пока что симуляция:
+      const confirmPay = confirm(`Вы хотите купить ${amount} монет за $${usd}?\n\n(Это тестовая оплата. В реальности здесь откроется платежный шлюз)`);
+      
+      if (confirmPay) {
+        let savedCoins = parseFloat(localStorage.getItem("oxide_pending_deposit") || "0");
+        localStorage.setItem("oxide_pending_deposit", savedCoins + amount);
+        
+        alert(`Успешно оплачено $${usd}. Баланс пополнится при возвращении в игру.`);
+        try { window.close(); } catch(e) { history.back(); }
+        if (window.opener && !window.opener.closed) { window.opener.location.reload(); }
+      }
+    }
+  </script>
+</body>
+</html>

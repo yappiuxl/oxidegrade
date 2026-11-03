@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Oxidegrade</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+  <!-- ЗАГРУЗОЧНЫЙ ЭКРАН -->
+  <div id="loadingScreen" style="position:fixed;inset:0;background:#050505;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity 0.5s;">
+    <h1 style="color:#da3633;font-size:36px;margin-bottom:20px;text-transform:uppercase;letter-spacing:2px;text-shadow:0 0 15px rgba(218,54,51,0.4);">Oxidegrade</h1>
+    <div style="width:250px;height:8px;background:#333;border-radius:4px;overflow:hidden;margin-bottom:10px;">
+      <div id="loadingBar" style="height:100%;width:0%;background:#da3633;transition:width 0.2s;box-shadow:0 0 10px #da3633;"></div>
+    </div>
+    <div id="loadingPercent" style="color:#8b949e;margin-bottom:40px;font-size:16px;font-weight:bold;">0%</div>
+    
+    <div style="background:rgba(218, 54, 51, 0.15);border:2px solid #da3633;border-radius:12px;padding:20px 30px;max-width:90%;text-align:center;box-shadow:0 0 25px rgba(218,54,51,0.3);">
+      <div style="color:#da3633;font-weight:900;font-size:18px;letter-spacing:1px;margin-bottom:6px;">ПРИМЕЧАНИЕ:</div>
+      <div style="color:#ff7b72;font-weight:bold;font-size:14px;line-height:1.4;">img ОБЫЧНЫХ ПРЕДМЕТОВ<br>БРАЛИСЬ ИЗ Rust</div>
+    </div>
+  </div>
+
+  <div id="app">
+    <!-- ВЕРХНЯЯ ШАПКА -->
+    <header style="justify-content: center;">
+      <div class="balance-pill" id="headerBalance">
+        <span id="coins">0</span>
+        <img src="moneta.png" alt="coin" style="width: 18px; height: 18px; border-radius: 50%;">
+      </div>
+    </header>
+
+    <!-- ОСНОВНОЙ ЭКРАН (АПГРЕЙД) -->
+    <main id="tab-upgrade">
+      
+      <div class="top-actions">
+        <button class="icon-btn" id="soundToggleBtn" title="Звук"><i class="fa-solid fa-volume-high"></i></button>
+        <button class="icon-btn" id="infoBtn" title="Инфо"><i class="fa-solid fa-circle-info"></i></button>
+        <button class="icon-btn" id="settingsBtn" title="Настройки"><i class="fa-solid fa-gear"></i></button>
+      </div>
+
+      <div class="upgrade-top-titles">
+        <div class="title-left">СТАВКА</div>
+        <div class="title-center">КОЛЕСО</div>
+        <div class="title-right">ЦЕЛЬ</div>
+      </div>
+
+      <div class="upgrade-top-area">
+        <div class="bet-area">
+          <div id="betSlots" class="bet-slots-mini"></div>
+        </div>
+        <div class="target-area">
+          <div id="targetBox" class="target-box empty">Выбрать<br>цель</div>
+        </div>
+      </div>
+
+      <div class="add-balance-area">
+        <div class="add-balance-label">Докидывание баланса:</div>
+        <div class="add-balance-input-row">
+          <input type="number" id="addCoinsInput" placeholder="0" min="0" step="0.01" disabled>
+          <button id="addCoinsMax" disabled>MAX</button>
+        </div>
+      </div>
+
+      <div class="wheel-wrapper">
+        <div class="wheel-container">
+          <div id="wheelBg" class="wheel-bg"></div>
+          <div class="wheel-pointer"></div>
+          <div class="wheel-center">
+            <div id="chanceBig" class="chance-big">— %</div>
+            <div id="multBig" class="mult-big">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="quick-actions-bar">
+        <div id="quickRow" class="quick-row"></div>
+      </div>
+
+      <div class="total-row" style="display:none;">Итого: <span id="totalLine">0</span></div>
+      <div id="upgradeResult" class="result" style="margin-bottom: 20px;"></div>
+      
+      <button id="spinUpgrade" class="btn-spin" disabled>УЛУЧШИТЬ</button>
+    </main>
+
+    <!-- ВКЛАДКА МАГАЗИН -->
+    <section id="tab-market" class="hidden">
+      <div class="market-controls">
+        <input type="text" id="marketSearch" placeholder="Поиск предмета...">
+      </div>
+      <div id="marketList" class="market-list"></div>
+    </section>
+
+    <!-- ВКЛАДКА КОЛЛЕКЦИЯ (Инвентарь) -->
+    <section id="tab-collection" class="hidden">
+      <div class="collection-controls">
+        <input type="text" id="collectionSearch" placeholder="Поиск в инвентаре...">
+      </div>
+      <div id="collection" class="collection-grid"></div>
+    </section>
+
+    <!-- НИЖНЕЕ МЕНЮ -->
+    <nav class="bottom-nav">
+      <button class="nav-item" data-tab="collection">
+        <i class="fa-solid fa-box-open"></i>
+        <span>Инвентарь</span>
+      </button>
+      <button class="nav-item active" data-tab="upgrade">
+        <i class="fa-solid fa-arrow-up-right-dots"></i>
+        <span>Апгрейд</span>
+      </button>
+      <button class="nav-item nav-center" id="depositBtn">
+        <div class="nav-center-icon"><i class="fa-solid fa-wallet"></i></div>
+      </button>
+      <button class="nav-item" id="rewardBtn">
+        <i class="fa-solid fa-gift"></i>
+        <span>Награда</span>
+      </button>
+      <button class="nav-item" data-tab="market">
+        <i class="fa-solid fa-store"></i>
+        <span>Магазин</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- МОДАЛКА ВЫБОРА -->
+  <div id="modal" class="modal-overlay hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modalTitle">Выбор</h3>
+        <button id="modalClose" class="close-btn">×</button>
+      </div>
+      <input type="text" id="modalSearch" placeholder="Поиск...">
+      <div id="modalList" class="modal-list"></div>
+    </div>
+  </div>
+
+  <!-- МОДАЛКА ПОДТВЕРЖДЕНИЯ -->
+  <div id="confirmModal" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width:320px;text-align:center;">
+      <h3 id="confirmTitle">Подтверждение</h3>
+      <p id="confirmText" style="margin:15px 0;color:#8b949e;"></p>
+      <div style="display:flex;gap:10px;justify-content:center;">
+        <button id="confirmYesBtn" style="background:#da3633;color:#fff;padding:10px 20px;border-radius:8px;border:none;font-weight:bold;cursor:pointer;">Да</button>
+        <button id="confirmNoBtn" style="background:#333;color:#fff;padding:10px 20px;border-radius:8px;border:none;font-weight:bold;cursor:pointer;">Нет</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- МОДАЛКА ИНФО -->
+  <div id="infoModal" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width:450px;text-align:left;">
+      <div class="modal-header">
+        <h3>Как работает апгрейд?</h3>
+        <button id="infoClose" class="close-btn">×</button>
+      </div>
+      <div style="color: #c9d1d9; font-size: 14px; line-height: 1.6;">
+        <p style="margin-bottom: 10px;"><b>1.</b> Выбери 1 или несколько предметов из инвентаря слева, чтобы улучшить их и получить более дорогой.</p>
+        <p style="margin-bottom: 10px;"><b>2.</b> Выбери нужный скин справа, просматривая предложенные или сортируя их.</p>
+        <p style="margin-bottom: 10px;"><b>3.</b> Затем нажмите кнопку <b>Улучшить</b>.</p>
+        <p style="margin-bottom: 10px;"><b>4.</b> Вероятность успешного апгрейда зависит от соотношения затрат и вложений и варьируется от <b>0,01%</b> до <b>80%</b>. Чем меньше разница между ценой ваших предметов и ценой желаемого предмета, тем выше вероятность успешного апгрейда.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- МОДАЛКА НАСТРОЕК -->
+  <div id="settingsModal" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width:350px;">
+      <div class="modal-header">
+        <h3>Настройка кнопок</h3>
+        <button id="settingsClose" class="close-btn">×</button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:15px;">
+        <div style="display:flex;gap:10px;">
+          <input type="number" id="mult1" step="0.1" placeholder="×2" style="flex:1;padding:8px;border-radius:6px;border:1px solid #333;background:#0d1117;color:#fff;">
+          <input type="number" id="mult2" step="0.1" placeholder="×5" style="flex:1;padding:8px;border-radius:6px;border:1px solid #333;background:#0d1117;color:#fff;">
+          <input type="number" id="mult3" step="0.1" placeholder="×10" style="flex:1;padding:8px;border-radius:6px;border:1px solid #333;background:#0d1117;color:#fff;">
+        </div>
+        <div style="display:flex;gap:10px;">
+          <input type="number" id="chance1" step="1" placeholder="35%" style="flex:1;padding:8px;border-radius:6px;border:1px solid #333;background:#0d1117;color:#fff;">
+          <input type="number" id="chance2" step="1" placeholder="67%" style="flex:1;padding:8px;border-radius:6px;border:1px solid #333;background:#0d1117;color:#fff;">
+          <input type="number" id="chance3" step="1" placeholder="80%" style="flex:1;padding:8px;border-radius:6px;border:1px solid #333;background:#0d1117;color:#fff;">
+        </div>
+      </div>
+      <button id="settingsSave" style="background:#238636;color:#fff;border:none;padding:10px;border-radius:8px;font-weight:bold;cursor:pointer;width:100%;margin-bottom:10px;">Сохранить</button>
+      <button id="settingsReset" style="background:#30363d;color:#fff;border:none;padding:10px;border-radius:8px;font-weight:bold;cursor:pointer;width:100%;">Сбросить</button>
+    </div>
+  </div>
+
+  <!-- МОДАЛКА ДЕПОЗИТА -->
+  <div id="depositModal" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width:350px; text-align:center;">
+      <div class="modal-header">
+        <h3>Пополнение баланса</h3>
+        <button id="depositClose" class="close-btn">×</button>
+      </div>
+      <p style="color: #8b949e; font-size: 14px; margin-bottom: 20px;">
+        Минимальная сумма пополнения: <b>50 монет</b>.<br>
+        Оплата происходит на нашем защищённом сайте.
+      </p>
+      <button id="depositGoBtn" style="background:#238636; color:#fff; border:none; padding:12px; border-radius:8px; font-weight:bold; cursor:pointer; width:100%; font-size:16px;">
+        Перейти к оплате
+      </button>
+    </div>
+  </div>
+
+  <!-- МОДАЛКА ВЫБОРА ДЕЙСТВИЯ С ПРЕДМЕТОМ -->
+  <div id="itemActionModal" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width:320px; text-align:center;">
+      <div class="modal-header">
+        <h3>Действие с предметом</h3>
+        <button id="itemActionClose" class="close-btn">×</button>
+      </div>
+      <div id="itemActionInfo" style="margin-bottom: 20px;"></div>
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <button id="itemActionSellBtn" style="background:#da3633; color:#fff; border:none; padding:12px; border-radius:8px; font-weight:bold; cursor:pointer; font-size:16px;">Продать</button>
+        <button id="itemActionWithdrawBtn" style="background:#1f6feb; color:#fff; border:none; padding:12px; border-radius:8px; font-weight:bold; cursor:pointer; font-size:16px;">Вывести</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- МОДАЛКА ВЫВОДА ПРЕДМЕТОВ -->
+  <div id="withdrawModal" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width:350px; text-align:center;">
+      <div class="modal-header">
+        <h3>Вывод предметов</h3>
+        <button id="withdrawClose" class="close-btn">×</button>
+      </div>
+      <p style="color: #8b949e; font-size: 14px; margin-bottom: 15px;">
+        Для вывода предметов напишите в Telegram:
+      </p>
+      <a href="https://t.me/YAPPIUXL" target="_blank" style="display:block; background:#1f6feb; color:#fff; padding:12px; border-radius:8px; text-decoration:none; font-weight:bold; font-size:16px; margin-bottom: 15px;">
+        <i class="fa-brands fa-telegram"></i> @YAPPIUXL
+      </a>
+      <p style="color: #f85149; font-size: 12px; font-weight: bold;">
+        В сообщении укажите ваш ник и список предметов.
+      </p>
+    </div>
+  </div>
+
+  <!-- ОВЕРЛЕЙ АНИМАЦИИ -->
+  <div id="upgradeAnimOverlay" class="anim-overlay">
+    <div id="goldFlash" class="gold-flash"></div>
+    <div class="anim-content">
+      <h2 id="animTitle" class="anim-title"></h2>
+      <div id="overlayWheelContainer" class="overlay-wheel-container" style="display:none;">
+        <div id="overlayWheelBg" class="wheel-bg"></div>
+        <div class="wheel-pointer"></div>
+        <div class="wheel-center">
+          <div id="overlayChanceBig" class="chance-big">— %</div>
+          <div id="overlayMultBig" class="mult-big">—</div>
+        </div>
+      </div>
+      <div id="animCardWrap" class="anim-card-wrap" style="display:none;"></div>
+      <p id="animSub" class="anim-sub"></p>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
