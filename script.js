@@ -177,34 +177,27 @@ function registerNewImgTags(rootEl) {
 
 let USER_ID = null;
 
-// Загружаем скрипт Telegram при старте
-(function loadTelegramScript() {
-  const script = document.createElement('script');
-  script.src = "https://telegram.org/js/telegram-widget.js?22";
-  script.async = true;
-  document.head.appendChild(script);
-})();
-
-// Функция для кнопки "Войти через Telegram"
-window.openTelegramAuth = function() {
-  if (typeof Telegram !== "undefined" && Telegram.Login) {
-    Telegram.Login.auth(
-      { bot_id: "9161757246:AAEbwTof-v6cNhP6jI7mFeziirqgCK_PdwQ", request_access: "write" },
-      function(data) {
-        if (data) {
-          USER_ID = "tg_" + data.id;
-          localStorage.setItem("oxide_user_id", USER_ID);
-          document.getElementById("authScreen").style.display = "none";
-          initGameUI();
-        } else {
-          alert("Ошибка входа через Telegram");
-        }
-      }
-    );
+window.addEventListener("DOMContentLoaded", () => {
+  // Ищем ID в адресной строке (если пришел от бота)
+  const urlParams = new URLSearchParams(window.location.search);
+  const urlId = urlParams.get('id');
+  
+  if (urlId) {
+    USER_ID = "tg_" + urlId;
+    localStorage.setItem("oxide_user_id", USER_ID);
   } else {
-    alert("Подождите пару секунд, скрипт Telegram загружается...");
+    // Если в адресе нет, ищем в памяти
+    USER_ID = localStorage.getItem("oxide_user_id");
   }
-};
+
+  if (USER_ID) {
+    // Если ID есть, скрываем вход и запускаем игру
+    const authScreen = document.getElementById("authScreen");
+    if (authScreen) authScreen.style.display = "none";
+    initGameUI();
+  } 
+  // Если ID нет — показываем экран с кнопкой (он и так уже на экране)
+});
 
 window.guestLogin = function() {
   USER_ID = "guest_" + Math.random().toString(36).substr(2, 9);
@@ -212,16 +205,6 @@ window.guestLogin = function() {
   document.getElementById("authScreen").style.display = "none";
   initGameUI();
 };
-
-window.addEventListener("DOMContentLoaded", () => {
-  const savedId = localStorage.getItem("oxide_user_id");
-  if (savedId) {
-    USER_ID = savedId;
-    const authScreen = document.getElementById("authScreen");
-    if (authScreen) authScreen.style.display = "none";
-    initGameUI();
-  }
-});
 
 let state = { coins: 0, players: [] };
 let betPlayers = []; 
