@@ -12,12 +12,13 @@ app.use(express.static(__dirname));
 
 // --- НАСТРОЙКИ ---
 const CRYPTOBOT_TOKEN = "667032:AAXp9fqUaWylsUDxBwlSdiiVNLuaL7YM4Qi";
+const TG_BOT_TOKEN = "9161757246:AAEbwTof-v6cNhP6jI7mFeziirqgCK_PdwQ";
 const PRICE_PER_50 = 2.31;
 const API_URL = "https://pay.crypt.bot/api/";
 
 // НАСТРОЙКИ GITHUB ДЛЯ БЭКАПА
 const GITHUB_TOKEN = "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";
-const GITHUB_REPO = "yappiuxl/oxidegrade"; // Твой репозиторий
+const GITHUB_REPO = "yappiuxl/oxidegrade";
 const DB_PATH = path.join(__dirname, 'database.sqlite');
 
 // --- ПОДКЛЮЧЕНИЕ К SQLITE ---
@@ -32,17 +33,14 @@ db.serialize(() => {
   )`);
 });
 
-// Функция для отправки базы в GitHub (чтобы она не удалилась при перезагрузке Render)
 async function backupDB() {
-  if (!GITHUB_TOKEN || GITHUB_TOKEN === "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") return;
+  if (!GITHUB_TOKEN) return;
   try {
     const fileContent = fs.readFileSync(DB_PATH).toString('base64');
     const url = `https://api.github.com/repos/${GITHUB_REPO}/contents/database.sqlite`;
 
     let sha = null;
-    const getRes = await fetch(url, {
-      headers: { 'Authorization': `token ${GITHUB_TOKEN}` }
-    });
+    const getRes = await fetch(url, { headers: { 'Authorization': `token ${GITHUB_TOKEN}` } });
     if (getRes.ok) {
       const data = await getRes.json();
       sha = data.sha;
@@ -57,10 +55,7 @@ async function backupDB() {
 
     await fetch(url, {
       method: 'PUT',
-      headers: {
-        'Authorization': `token ${GITHUB_TOKEN}`,
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Authorization': `token ${GITHUB_TOKEN}`, 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
     });
     console.log("✅ База сохранена в GitHub");
@@ -70,14 +65,12 @@ async function backupDB() {
 }
 
 // --- ПРОМОКОДЫ ---
-let promos = {
-  "oxide": { coins: 5, usesLeft: 5 }
-};
+let promos = { "oxide": { coins: 5, usesLeft: 5 } };
 
 app.post('/api/apply-promo', (req, res) => {
   const { code, userId } = req.body;
   if (!code) return res.json({ status: "invalid", message: "Промокод неверный" });
-  
+
   const promo = promos[code.toLowerCase()];
   if (!promo) return res.json({ status: "invalid", message: "Промокод неверный" });
   if (promo.usesLeft <= 0) return res.json({ status: "limit", message: "У промокода закончились активации" });
@@ -105,17 +98,17 @@ app.post('/api/apply-promo', (req, res) => {
     promo.usesLeft--;
     const newCoins = Number(user.coins) + promo.coins;
     const newPromoUsed = JSON.stringify([...promoUsed, code.toLowerCase()]);
-    
+
     db.run('UPDATE players SET coins = ?, promo_used = ? WHERE user_id = ?', [newCoins, newPromoUsed, user.user_id], (err) => {
       if (err) return res.json({ status: "invalid", message: "Ошибка БД" });
-      backupDB(); // Сохраняем базу в GitHub
+      backupDB();
       res.json({ status: "success", message: `Промокод использован, +${promo.coins} монет. Можете возвращаться в игру`, coins: promo.coins });
     });
   }
 });
 
 // --- КАССА ---
-const pendingInvoices = {}; 
+const pendingInvoices = {};
 
 app.post('/api/create-invoice', async (req, res) => {
   const { coins, userId } = req.body;
@@ -156,7 +149,7 @@ app.post('/api/cryptobot-webhook', (req, res) => {
 
     if (pendingInvoices[invoiceId]) {
       const { coins, userId } = pendingInvoices[invoiceId];
-      
+
       db.get('SELECT * FROM players WHERE user_id = ?', [userId], (err, user) => {
         if (!user) {
           db.run('INSERT INTO players (user_id, coins, inventory) VALUES (?, ?, ?)', [userId, coins, '[]'], () => backupDB());
@@ -165,7 +158,7 @@ app.post('/api/cryptobot-webhook', (req, res) => {
           db.run('UPDATE players SET coins = ? WHERE user_id = ?', [newCoins, userId], () => backupDB());
         }
       });
-      
+
       delete pendingInvoices[invoiceId];
     }
   }
@@ -185,30 +178,49 @@ app.get('/api/get-player/:userId', (req, res) => {
   });
 });
 
-app.post(`/api/tg-webhook`, async (req, res) => {
+app.post('/api/save-player', (req, res) => {
+  const { userId, coins, inventory } = req.body;
+
+  db.get('SELECT * FROM players WHERE user_id = ?', [userId], (err, user) => {
+    if (!user) {
+      db.run('INSERT INTO players (user_id, coins, inventory) VALUES (?, ?, ?)', [userId, coins, JSON.stringify(inventory)], () => {
+        backupDB();
+        res.json({ success: true });
+      });
+    } else {
+      db.run('UPDATE players SET coins = ?, inventory = ? WHERE user_id = ?', [coins, JSON.stringify(inventory), userId], () => {
+        backupDB();
+        res.json({ success: true });
+      });
+    }
+  });
+});
+
+// --- TELEGRAM ВЕБХУК ---
+app.post('/api/tg-webhook', async (req, res) => {
   const msg = req.body.message;
   if (!msg || !msg.text) return res.sendStatus(200);
-  
+
   const chatId = msg.chat.id;
   const text = msg.text;
 
   if (text.startsWith("/start")) {
-    // Ссылка на игру с ID игрока
     const gameUrl = `https://oxidegrade-dmfx.onrender.com/?id=${chatId}`;
-    
     const replyText = `Добро пожаловать в Oxidegrade!\n\nВаш ID: ${chatId}\n\nНажмите кнопку ниже, чтобы начать играть:`;
-    
-    await fetch(`https://api.telegram.org/bot${9161757246:AAEbwTof-v6cNhP6jI7mFeziirqgCK_PdwQ}/sendMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text: replyText,
-        reply_markup: {
-          inline_keyboard: [[ { text: "🎮 Играть", url: gameUrl } ]]
-        }
-      })
-    });
+
+    try {
+      await fetch(`https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: replyText,
+          reply_markup: {
+            inline_keyboard: [[ { text: "🎮 Играть", url: gameUrl } ]]
+          }
+        })
+      });
+    } catch (e) { console.error("TG send error:", e); }
   }
   res.sendStatus(200);
 });
