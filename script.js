@@ -175,9 +175,10 @@ function registerNewImgTags(rootEl) {
   });
 }
 
-let USER_ID = null;
+let USER_ID = null
 
 window.addEventListener("DOMContentLoaded", () => {
+  // Ищем ID в адресной строке (если пришел от бота)
   const urlParams = new URLSearchParams(window.location.search);
   const urlId = urlParams.get('id');
   
@@ -189,10 +190,12 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 
   if (USER_ID) {
+    // Если ID есть, скрываем вход и запускаем игру
     const authScreen = document.getElementById("authScreen");
     if (authScreen) authScreen.style.display = "none";
     initGameUI();
-  }
+  } 
+  // Если ID нет — остаемся на экране входа
 });
 
 window.guestLogin = function() {
