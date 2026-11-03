@@ -84,6 +84,30 @@ app.post('/api/update-balance', (req, res) => {
   res.json({ success: true });
 });
 
+// --- ПРОМОКОДЫ ---
+let promos = {
+  "oxide": { coins: 5, usesLeft: 5 }
+};
+
+app.post('/api/apply-promo', (req, res) => {
+  const { code, userId } = req.body;
+  const promo = promos[code.toLowerCase()];
+
+  if (!promo) return res.json({ status: "invalid", message: "Промокод неверный" });
+  if (promo.usesLeft <= 0) return res.json({ status: "limit", message: "У промокода закончились активации" });
+
+  // Активация
+  promo.usesLeft--;
+  if (!userBalances[userId]) userBalances[userId] = 0;
+  userBalances[userId] += promo.coins;
+
+  res.json({ 
+    status: "success", 
+    message: `Промокод использован, +${promo.coins} монет. Можете возвращаться в игру`,
+    coins: promo.coins
+  });
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Сервер запущен на порту ${PORT}`);
