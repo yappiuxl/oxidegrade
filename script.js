@@ -178,7 +178,6 @@ function registerNewImgTags(rootEl) {
 let USER_ID = null;
 
 window.addEventListener("DOMContentLoaded", () => {
-  // Ищем ID в адресной строке (если пришел от бота)
   const urlParams = new URLSearchParams(window.location.search);
   const urlId = urlParams.get('id');
   
@@ -186,17 +185,14 @@ window.addEventListener("DOMContentLoaded", () => {
     USER_ID = "tg_" + urlId;
     localStorage.setItem("oxide_user_id", USER_ID);
   } else {
-    // Если в адресе нет, ищем в памяти
     USER_ID = localStorage.getItem("oxide_user_id");
   }
 
   if (USER_ID) {
-    // Если ID есть, скрываем вход и запускаем игру
     const authScreen = document.getElementById("authScreen");
     if (authScreen) authScreen.style.display = "none";
     initGameUI();
-  } 
-  // Если ID нет — показываем экран с кнопкой (он и так уже на экране)
+  }
 });
 
 window.guestLogin = function() {
@@ -225,7 +221,6 @@ function saveState() {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify({ coins: state.coins, players: state.players }));
     
-    // Отправляем на сервер
     fetch('/api/save-player', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -236,7 +231,6 @@ function saveState() {
 }
 
 function loadStateFromLocal() {
-  localStorage.removeItem(SAVE_KEY); // Сброс сейва (убери эту строку, если нужно сохранение)
   try {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return;
@@ -1074,17 +1068,6 @@ window.chooseTo = chooseTo;
 window.buyPlayer = buyPlayer;
 window.openItemActionModal = openItemActionModal;
 
-function checkPendingDeposit() {
-  const pending = parseFloat(localStorage.getItem("oxide_pending_deposit") || "0");
-  if (pending > 0) {
-    state.coins += pending;
-    localStorage.removeItem("oxide_pending_deposit");
-    updateCoins();
-    saveState();
-    showToast(`Баланс пополнен на ${pending} монет!`, "#3fb950");
-  }
-}
-
 async function initGameUI() {
   loadStateFromLocal();
   updateCoins();
@@ -1109,7 +1092,7 @@ async function initGameUI() {
   renderQuickRow();
   refreshUpgrade();
 
-  startBalancePolling(); // <--- ЗАПУСК ПРОВЕРКИ БАЛАНСА
+  startBalancePolling();
 }
 
 let loadingPct = 0;
@@ -1235,4 +1218,4 @@ function startBalancePolling() {
       }
     } catch (e) {}
   }, 5000);
-    }
+        }
