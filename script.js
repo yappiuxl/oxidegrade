@@ -177,19 +177,35 @@ function registerNewImgTags(rootEl) {
 
 let USER_ID = null;
 
-// Функция, которая вызывается после успешного входа через Telegram
-window.onTelegramAuth = function(user) {
-  USER_ID = "tg_" + user.id; // Уникальный ID на основе Telegram
-  localStorage.setItem("oxide_user_id", USER_ID);
-  
-  // Скрываем экран входа
-  document.getElementById("authScreen").style.display = "none";
-  
-  // Запускаем игру
-  initGameUI();
+// Загружаем скрипт Telegram при старте
+(function loadTelegramScript() {
+  const script = document.createElement('script');
+  script.src = "https://telegram.org/js/telegram-widget.js?22";
+  script.async = true;
+  document.head.appendChild(script);
+})();
+
+// Функция для кнопки "Войти через Telegram"
+window.openTelegramAuth = function() {
+  if (typeof Telegram !== "undefined" && Telegram.Login) {
+    Telegram.Login.auth(
+      { bot_id: "9161757246:AAEbwTof-v6cNhP6jI7mFeziirqgCK_PdwQ", request_access: "write" },
+      function(data) {
+        if (data) {
+          USER_ID = "tg_" + data.id;
+          localStorage.setItem("oxide_user_id", USER_ID);
+          document.getElementById("authScreen").style.display = "none";
+          initGameUI();
+        } else {
+          alert("Ошибка входа через Telegram");
+        }
+      }
+    );
+  } else {
+    alert("Подождите пару секунд, скрипт Telegram загружается...");
+  }
 };
 
-// Функция входа как гость
 window.guestLogin = function() {
   USER_ID = "guest_" + Math.random().toString(36).substr(2, 9);
   localStorage.setItem("oxide_user_id", USER_ID);
@@ -197,7 +213,6 @@ window.guestLogin = function() {
   initGameUI();
 };
 
-// Авто-вход, если игрок уже заходил ранее
 window.addEventListener("DOMContentLoaded", () => {
   const savedId = localStorage.getItem("oxide_user_id");
   if (savedId) {
