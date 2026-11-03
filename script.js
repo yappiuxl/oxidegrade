@@ -175,7 +175,7 @@ function registerNewImgTags(rootEl) {
   });
 }
 
-let state = { coins: 10, players: [] };
+let state = { coins: 0, players: [] };
 let betPlayers = []; 
 let betCoins = 0; 
 let upgradeTo = null; 
