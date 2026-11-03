@@ -23,6 +23,17 @@
     </div>
   </div>
 
+  <!-- ЭКРАН АВТОРИЗАЦИИ -->
+<div id="authScreen" style="position:fixed;inset:0;background:#050505;z-index:5000;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;">
+  <h1 style="color:#da3633;font-size:36px;margin-bottom:20px;text-transform:uppercase;letter-spacing:2px;text-shadow:0 0 15px rgba(218,54,51,0.4);">Oxidegrade</h1>
+  <p style="color:#8b949e;margin-bottom:30px;text-align:center;">Войдите, чтобы сохранять свой инвентарь</p>
+  
+  <!-- Виджет Telegram (сюда вставим скрипт из шага 3) -->
+  <div id="telegram-login-container"></div>
+  
+  <button onclick="guestLogin()" style="margin-top:20px;background:none;border:none;color:#8b949e;text-decoration:underline;cursor:pointer;">Войти как гость (прогресс не сохранится)</button>
+</div>
+
   <div id="app">
     <!-- ВЕРХНЯЯ ШАПКА -->
     <header style="justify-content: center;">
