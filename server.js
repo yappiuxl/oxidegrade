@@ -7,13 +7,15 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(__dirname));
 
-const CRYPTOBOT_TOKEN = "666959:AAleHOUJezN1eu9OBOAjD18ZJ9Ft5RD2NAY";
+const CRYPTOBOT_TOKEN = "ТВОЙ_ТОКЕН_ОТ_CRYPTOBOT";
 const PRICE_PER_50 = 2.31;
 const API_URL = "https://pay.crypt.bot/api/";
 
+// Временное хранилище (в оперативке)
 const pendingInvoices = {}; 
 const userBalances = {}; 
 
+// 1. Создание счета
 app.post('/api/create-invoice', async (req, res) => {
   const { coins, userId } = req.body;
   if (!coins || coins < 50) return res.status(400).json({ error: "Минимум 50 монет" });
@@ -48,26 +50,34 @@ app.post('/api/create-invoice', async (req, res) => {
   }
 });
 
+// 2. Вебхук (сюда приходит сигнал об оплате)
 app.post('/api/cryptobot-webhook', (req, res) => {
   const update = req.body;
+  
   if (update.update_type === "invoice_paid") {
     const invoice = update.payload;
     const invoiceId = invoice.invoice_id;
 
     if (pendingInvoices[invoiceId]) {
       const { coins, userId } = pendingInvoices[invoiceId];
+      
+      // Начисляем монеты пользователю
       if (!userBalances[userId]) userBalances[userId] = 0;
       userBalances[userId] += coins;
+      
+      console.log(`✅ Пользователь ${userId} купил ${coins} монет. Новый баланс: ${userBalances[userId]}`);
       delete pendingInvoices[invoiceId];
     }
   }
   res.sendStatus(200);
 });
 
+// 3. Получить баланс (игра запрашивает при заходе)
 app.get('/api/balance/:userId', (req, res) => {
   res.json({ coins: userBalances[req.params.userId] || 0 });
 });
 
+// 4. Сохранить баланс (когда игрок продает/покупает в игре)
 app.post('/api/update-balance', (req, res) => {
   const { userId, coins } = req.body;
   userBalances[userId] = coins;
