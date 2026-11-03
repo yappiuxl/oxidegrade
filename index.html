@@ -28,10 +28,12 @@
   <h1 style="color:#da3633;font-size:36px;margin-bottom:20px;text-transform:uppercase;letter-spacing:2px;text-shadow:0 0 15px rgba(218,54,51,0.4);">Oxidegrade</h1>
   <p style="color:#8b949e;margin-bottom:30px;text-align:center;">Войдите, чтобы сохранять свой инвентарь</p>
   
-  <!-- Виджет Telegram (сюда вставим скрипт из шага 3) -->
-  <div id="telegram-login-container"></div>
+  <!-- Кнопка входа (будет работать всегда) -->
+  <button onclick="openTelegramAuth()" style="display:flex;align-items:center;gap:10px;background:#2AABEE;color:#fff;border:none;padding:12px 24px;border-radius:8px;font-size:16px;font-weight:bold;cursor:pointer;box-shadow:0 4px 15px rgba(42,171,238,0.4);">
+    <i class="fa-brands fa-telegram" style="font-size:20px;"></i> Войти через Telegram
+  </button>
   
-  <button onclick="guestLogin()" style="margin-top:20px;background:none;border:none;color:#8b949e;text-decoration:underline;cursor:pointer;">Войти как гость (прогресс не сохранится)</button>
+  <button onclick="guestLogin()" style="margin-top:20px;background:none;border:none;color:#8b949e;text-decoration:underline;cursor:pointer;">Войти как гость</button>
 </div>
 
   <div id="app">
