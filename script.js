@@ -798,11 +798,29 @@ async function finishSpin(outcome, totalBet, chanceUsed) {
     await animSleep(1400);
     closeAnimOverlay();
     return;
-  }
 
-  removeBetPlayersFromCollection(betPlayersCopy);
-  let refund = Math.floor(totalBet / 10);
-  state.coins = state.coins - spentCoins + refund;
+    removeBetPlayersFromCollection(betPlayersCopy);
+
+// Запускаем анимацию компенсации
+animTitle.textContent = "💥 Проигрыш";
+animSub.textContent = "Рулетка компенсации...";
+goldChainPanel.classList.remove("show"); // Скрываем панель ставок
+overlayWheelContainer.style.display = "none"; // Скрываем старое колесо
+
+const compPercent = calculateCompensation();
+const refund = Math.floor((totalBet * compPercent) / 100);
+
+// Анимация рулетки (просто быстрое мелькание циферок для визуала)
+let ticks = 0;
+const tickInterval = setInterval(() => {
+  animSub.innerHTML = `🎰 <span style="color:#ffd700">${(Math.random() * 50).toFixed(1)}%</span>`;
+  if (++ticks > 15) {
+    clearInterval(tickInterval);
+    animSub.innerHTML = `🎉 Выпало: <b>${compPercent.toFixed(1)}%</b> = +${refund} <img src="moneta.png" style="width: 14px; height: 14px; border-radius: 50%; vertical-align: middle;">`;
+  }
+}, 80);
+
+state.coins = state.coins - spentCoins + refund;
 
   AUDIO.lose();
   betPlayers = []; betCoins = 0; if(addCoinsInput) addCoinsInput.value = 0; upgradeTo = null; activeQuick = null;
@@ -813,8 +831,6 @@ async function finishSpin(outcome, totalBet, chanceUsed) {
   showGoldChainPanel(stakeForPanel, target, chanceUsed, stakePlayersForPanel);
   animTitle.textContent = "💥 Проигрыш";
 
-  if (refund > 0) animSub.innerHTML = `Утешение: +${refund} <img src="moneta.png" style="width: 14px; height: 14px; border-radius: 50%; vertical-align: middle;">`;
-  else animSub.textContent = "Ставки потеряны";
   await animSleep(1800);
   closeAnimOverlay();
 }
