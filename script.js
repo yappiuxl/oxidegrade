@@ -175,8 +175,38 @@ function registerNewImgTags(rootEl) {
   });
 }
 
-const USER_ID = localStorage.getItem("oxide_user_id") || "user_" + Math.random().toString(36).substr(2, 9);
-localStorage.setItem("oxide_user_id", USER_ID);
+let USER_ID = null;
+
+// Функция, которая вызывается после успешного входа через Telegram
+window.onTelegramAuth = function(user) {
+  USER_ID = "tg_" + user.id; // Уникальный ID на основе Telegram
+  localStorage.setItem("oxide_user_id", USER_ID);
+  
+  // Скрываем экран входа
+  document.getElementById("authScreen").style.display = "none";
+  
+  // Запускаем игру
+  initGameUI();
+};
+
+// Функция входа как гость
+window.guestLogin = function() {
+  USER_ID = "guest_" + Math.random().toString(36).substr(2, 9);
+  localStorage.setItem("oxide_user_id", USER_ID);
+  document.getElementById("authScreen").style.display = "none";
+  initGameUI();
+};
+
+// Авто-вход, если игрок уже заходил ранее
+window.addEventListener("DOMContentLoaded", () => {
+  const savedId = localStorage.getItem("oxide_user_id");
+  if (savedId) {
+    USER_ID = savedId;
+    const authScreen = document.getElementById("authScreen");
+    if (authScreen) authScreen.style.display = "none";
+    initGameUI();
+  }
+});
 
 let state = { coins: 0, players: [] };
 let betPlayers = []; 
@@ -1185,10 +1215,6 @@ document.querySelectorAll(".bottom-nav .nav-item[data-tab]").forEach(btn => {
     if (btn.dataset.tab === "collection") renderCollection();
     if (btn.dataset.tab === "market") renderMarket();
   });
-});
-
-window.addEventListener("DOMContentLoaded", () => {
-  initGameUI();
 });
 
 // --- ФУНКЦИЯ ПРОВЕРКИ БАЛАНСА В ФОНЕ ---
