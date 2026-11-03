@@ -11,11 +11,34 @@ const CRYPTOBOT_TOKEN = "ТВОЙ_ТОКЕН_ОТ_CRYPTOBOT";
 const PRICE_PER_50 = 2.31;
 const API_URL = "https://pay.crypt.bot/api/";
 
-// Временное хранилище (в оперативке)
 const pendingInvoices = {}; 
 const userBalances = {}; 
 
-// 1. Создание счета
+// --- ПРОМОКОДЫ ---
+let promos = {
+  "oxide": { coins: 5, usesLeft: 5 }
+};
+
+app.post('/api/apply-promo', (req, res) => {
+  const { code, userId } = req.body;
+  if (!code) return res.json({ status: "invalid", message: "Промокод неверный" });
+  
+  const promo = promos[code.toLowerCase()];
+
+  if (!promo) return res.json({ status: "invalid", message: "Промокод неверный" });
+  if (promo.usesLeft <= 0) return res.json({ status: "limit", message: "У промокода закончились активации" });
+
+  promo.usesLeft--;
+  if (!userBalances[userId]) userBalances[userId] = 0;
+  userBalances[userId] += promo.coins;
+
+  res.json({ 
+    status: "success", 
+    message: `Промокод использован, +${promo.coins} монет. Можете возвращаться в игру`,
+    coins: promo.coins
+  });
+});
+
 app.post('/api/create-invoice', async (req, res) => {
   const { coins, userId } = req.body;
   if (!coins || coins < 50) return res.status(400).json({ error: "Минимум 50 монет" });
@@ -50,62 +73,31 @@ app.post('/api/create-invoice', async (req, res) => {
   }
 });
 
-// 2. Вебхук (сюда приходит сигнал об оплате)
 app.post('/api/cryptobot-webhook', (req, res) => {
   const update = req.body;
-  
   if (update.update_type === "invoice_paid") {
     const invoice = update.payload;
     const invoiceId = invoice.invoice_id;
 
     if (pendingInvoices[invoiceId]) {
       const { coins, userId } = pendingInvoices[invoiceId];
-      
-      // Начисляем монеты пользователю
       if (!userBalances[userId]) userBalances[userId] = 0;
       userBalances[userId] += coins;
-      
-      console.log(`✅ Пользователь ${userId} купил ${coins} монет. Новый баланс: ${userBalances[userId]}`);
+      console.log(`✅ Пользователь ${userId} купил ${coins} монет. Баланс: ${userBalances[userId]}`);
       delete pendingInvoices[invoiceId];
     }
   }
   res.sendStatus(200);
 });
 
-// 3. Получить баланс (игра запрашивает при заходе)
 app.get('/api/balance/:userId', (req, res) => {
   res.json({ coins: userBalances[req.params.userId] || 0 });
 });
 
-// 4. Сохранить баланс (когда игрок продает/покупает в игре)
 app.post('/api/update-balance', (req, res) => {
   const { userId, coins } = req.body;
   userBalances[userId] = coins;
   res.json({ success: true });
-});
-
-// --- ПРОМОКОДЫ ---
-let promos = {
-  "oxide": { coins: 5, usesLeft: 5 }
-};
-
-app.post('/api/apply-promo', (req, res) => {
-  const { code, userId } = req.body;
-  const promo = promos[code.toLowerCase()];
-
-  if (!promo) return res.json({ status: "invalid", message: "Промокод неверный" });
-  if (promo.usesLeft <= 0) return res.json({ status: "limit", message: "У промокода закончились активации" });
-
-  // Активация
-  promo.usesLeft--;
-  if (!userBalances[userId]) userBalances[userId] = 0;
-  userBalances[userId] += promo.coins;
-
-  res.json({ 
-    status: "success", 
-    message: `Промокод использован, +${promo.coins} монет. Можете возвращаться в игру`,
-    coins: promo.coins
-  });
 });
 
 const PORT = process.env.PORT || 3000;
