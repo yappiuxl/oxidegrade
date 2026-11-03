@@ -198,10 +198,10 @@ function saveState() {
     localStorage.setItem(SAVE_KEY, JSON.stringify({ coins: state.coins, players: state.players }));
     
     // Отправляем на сервер
-    fetch('/api/update-balance', {
+    fetch('/api/save-player', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: USER_ID, coins: state.coins })
+      body: JSON.stringify({ userId: USER_ID, coins: state.coins, inventory: state.players })
     }).catch(e => console.warn("Ошибка синхронизации"));
     
   } catch (e) {}
@@ -1061,17 +1061,17 @@ async function initGameUI() {
   loadStateFromLocal();
   updateCoins();
   
-  // Запрашиваем актуальный баланс с сервера
   try {
-    const res = await fetch('/api/balance/' + USER_ID);
+    const res = await fetch('/api/get-player/' + USER_ID);
     const data = await res.json();
-    if (data.coins !== undefined) {
+    if (data.coins !== undefined && data.inventory !== undefined) {
       state.coins = data.coins;
+      state.players = data.inventory;
       updateCoins();
-      saveState(); // синхронизируем локально
+      saveState(); 
     }
   } catch (e) {
-    console.warn("Сервер спит или недоступен, используем локальный баланс");
+    console.warn("Сервер спит или недоступен, используем локальные данные");
   }
 
   renderCollection();
@@ -1081,33 +1081,7 @@ async function initGameUI() {
   renderQuickRow();
   refreshUpgrade();
 
-  startBalancePolling();
-}
-
-let _balancePollTimer = null;
-
-function startBalancePolling() {
-  if (_balancePollTimer) clearInterval(_balancePollTimer);
-  
-  _balancePollTimer = setInterval(async () => {
-    // Не проверяем баланс, если игрок сейчас крутит колесо
-    if (spinning) return;
-    
-    try {
-      const res = await fetch('/api/get-player/' + USER_ID);
-      const data = await res.json();
-      
-      // Если на сервере монет больше, чем у нас локально — обновляем
-      if (data.coins !== undefined && data.coins > state.coins) {
-        state.coins = data.coins;
-        updateCoins();
-        saveState();
-        showToast(`Баланс обновлен!`, "#3fb950");
-      }
-    } catch (e) {
-      // Тихо игнорируем ошибки сети, чтобы не спамить в консоль
-    }
-  }, 5000); // Проверка каждые 5 секунд
+  startBalancePolling(); // <--- ЗАПУСК ПРОВЕРКИ БАЛАНСА
 }
 
 let loadingPct = 0;
@@ -1133,7 +1107,6 @@ if (document.getElementById("depositClose")) {
 }
 if (document.getElementById("depositGoBtn")) {
   document.getElementById("depositGoBtn").addEventListener("click", () => {
-    // Ссылка на кассу с передачей ID игрока
     const PAYMENT_URL = "deposit.html?user=" + USER_ID; 
     window.open(PAYMENT_URL, "_blank");
   });
@@ -1217,3 +1190,25 @@ document.querySelectorAll(".bottom-nav .nav-item[data-tab]").forEach(btn => {
 window.addEventListener("DOMContentLoaded", () => {
   initGameUI();
 });
+
+// --- ФУНКЦИЯ ПРОВЕРКИ БАЛАНСА В ФОНЕ ---
+let _balancePollTimer = null;
+function startBalancePolling() {
+  if (_balancePollTimer) clearInterval(_balancePollTimer);
+  
+  _balancePollTimer = setInterval(async () => {
+    if (spinning) return;
+    
+    try {
+      const res = await fetch('/api/get-player/' + USER_ID);
+      const data = await res.json();
+      
+      if (data.coins !== undefined && data.coins > state.coins) {
+        state.coins = data.coins;
+        updateCoins();
+        saveState();
+        showToast(`Баланс обновлен!`, "#3fb950");
+      }
+    } catch (e) {}
+  }, 5000);
+    }
