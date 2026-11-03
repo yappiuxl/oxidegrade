@@ -1033,17 +1033,29 @@ function checkPendingDeposit() {
   }
 }
 
-function initGameUI() {
+async function initGameUI() {
   loadStateFromLocal();
   updateCoins();
+  
+  // Запрашиваем актуальный баланс с сервера
+  try {
+    const res = await fetch('/api/balance/' + USER_ID);
+    const data = await res.json();
+    if (data.coins !== undefined) {
+      state.coins = data.coins;
+      updateCoins();
+      saveState(); // синхронизируем локально
+    }
+  } catch (e) {
+    console.warn("Сервер спит или недоступен, используем локальный баланс");
+  }
+
   renderCollection();
   renderMarket();
   renderBetSlots();
   renderTargetBox();
   renderQuickRow();
   refreshUpgrade();
-  
-  checkPendingDeposit();
 }
 
 let loadingPct = 0;
