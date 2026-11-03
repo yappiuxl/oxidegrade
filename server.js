@@ -16,7 +16,7 @@ const PRICE_PER_50 = 2.31;
 const API_URL = "https://pay.crypt.bot/api/";
 
 // НАСТРОЙКИ GITHUB ДЛЯ БЭКАПА
-const GITHUB_TOKEN = "ТВОЙ_ТОКЕН_ОТ_GITHUB";
+const GITHUB_TOKEN = "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";
 const GITHUB_REPO = "yappiuxl/oxidegrade"; // Твой репозиторий
 const DB_PATH = path.join(__dirname, 'database.sqlite');
 
@@ -34,7 +34,7 @@ db.serialize(() => {
 
 // Функция для отправки базы в GitHub (чтобы она не удалилась при перезагрузке Render)
 async function backupDB() {
-  if (!GITHUB_TOKEN || GITHUB_TOKEN === "ТВОЙ_ТОКЕН_ОТ_GITHUB") return;
+  if (!GITHUB_TOKEN || GITHUB_TOKEN === "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") return;
   try {
     const fileContent = fs.readFileSync(DB_PATH).toString('base64');
     const url = `https://api.github.com/repos/${GITHUB_REPO}/contents/database.sqlite`;
@@ -185,22 +185,32 @@ app.get('/api/get-player/:userId', (req, res) => {
   });
 });
 
-app.post('/api/save-player', (req, res) => {
-  const { userId, coins, inventory } = req.body;
+app.post(`/api/tg-webhook`, async (req, res) => {
+  const msg = req.body.message;
+  if (!msg || !msg.text) return res.sendStatus(200);
   
-  db.get('SELECT * FROM players WHERE user_id = ?', [userId], (err, user) => {
-    if (!user) {
-      db.run('INSERT INTO players (user_id, coins, inventory) VALUES (?, ?, ?)', [userId, coins, JSON.stringify(inventory)], () => {
-        backupDB();
-        res.json({ success: true });
-      });
-    } else {
-      db.run('UPDATE players SET coins = ?, inventory = ? WHERE user_id = ?', [coins, JSON.stringify(inventory), userId], () => {
-        backupDB();
-        res.json({ success: true });
-      });
-    }
-  });
+  const chatId = msg.chat.id;
+  const text = msg.text;
+
+  if (text.startsWith("/start")) {
+    // Ссылка на игру с ID игрока
+    const gameUrl = `https://oxidegrade-dmfx.onrender.com/?id=${chatId}`;
+    
+    const replyText = `Добро пожаловать в Oxidegrade!\n\nВаш ID: ${chatId}\n\nНажмите кнопку ниже, чтобы начать играть:`;
+    
+    await fetch(`https://api.telegram.org/bot${9161757246:AAEbwTof-v6cNhP6jI7mFeziirqgCK_PdwQ}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: replyText,
+        reply_markup: {
+          inline_keyboard: [[ { text: "🎮 Играть", url: gameUrl } ]]
+        }
+      })
+    });
+  }
+  res.sendStatus(200);
 });
 
 const PORT = process.env.PORT || 3000;
