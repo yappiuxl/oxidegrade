@@ -1080,6 +1080,34 @@ async function initGameUI() {
   renderTargetBox();
   renderQuickRow();
   refreshUpgrade();
+
+  startBalancePolling();
+}
+
+let _balancePollTimer = null;
+
+function startBalancePolling() {
+  if (_balancePollTimer) clearInterval(_balancePollTimer);
+  
+  _balancePollTimer = setInterval(async () => {
+    // Не проверяем баланс, если игрок сейчас крутит колесо
+    if (spinning) return;
+    
+    try {
+      const res = await fetch('/api/get-player/' + USER_ID);
+      const data = await res.json();
+      
+      // Если на сервере монет больше, чем у нас локально — обновляем
+      if (data.coins !== undefined && data.coins > state.coins) {
+        state.coins = data.coins;
+        updateCoins();
+        saveState();
+        showToast(`Баланс обновлен!`, "#3fb950");
+      }
+    } catch (e) {
+      // Тихо игнорируем ошибки сети, чтобы не спамить в консоль
+    }
+  }, 5000); // Проверка каждые 5 секунд
 }
 
 let loadingPct = 0;
