@@ -1165,3 +1165,12 @@ document.querySelectorAll(".bottom-nav .nav-item[data-tab]").forEach(btn => {
 window.addEventListener("DOMContentLoaded", () => {
   initGameUI();
 });
+
+function calculateCompensation() {
+  const roll = Math.random() * 100;
+  if (roll <= 50) return 1 + Math.random() * 4;      // 1-5% (шанс 50%)
+  if (roll <= 70) return 5 + Math.random() * 5;      // 5-10% (шанс 20%)
+  if (roll <= 95) return 10 + Math.random() * 10;    // 10-20% (шанс 25%)
+  if (roll <= 99) return 20 + Math.random() * 10;    // 20-30% (шанс 4%)
+  return 30 + Math.random() * 20;                    // 30-50% (шанс 1%)
+}
