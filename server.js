@@ -1,18 +1,73 @@
 const express = require('express');
 const cors = require('cors');
 const fetch = require('node-fetch');
+const sqlite3 = require('sqlite3').verbose();
+const fs = require('fs');
+const path = require('path');
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 app.use(express.static(__dirname));
 
-const CRYPTOBOT_TOKEN = "ТВОЙ_ТОКЕН_ОТ_CRYPTOBOT";
+// --- НАСТРОЙКИ ---
+const CRYPTOBOT_TOKEN = "667032:AAXp9fqUaWylsUDxBwlSdiiVNLuaL7YM4Qi";
 const PRICE_PER_50 = 2.31;
 const API_URL = "https://pay.crypt.bot/api/";
 
-const pendingInvoices = {}; 
-const userBalances = {}; 
+// НАСТРОЙКИ GITHUB ДЛЯ БЭКАПА
+const GITHUB_TOKEN = "ТВОЙ_ТОКЕН_ОТ_GITHUB";
+const GITHUB_REPO = "yappiuxl/oxidegrade"; // Твой репозиторий
+const DB_PATH = path.join(__dirname, 'database.sqlite');
+
+// --- ПОДКЛЮЧЕНИЕ К SQLITE ---
+const db = new sqlite3.Database(DB_PATH);
+
+db.serialize(() => {
+  db.run(`CREATE TABLE IF NOT EXISTS players (
+    user_id TEXT PRIMARY KEY,
+    coins REAL DEFAULT 0,
+    inventory TEXT DEFAULT '[]',
+    promo_used TEXT DEFAULT '[]'
+  )`);
+});
+
+// Функция для отправки базы в GitHub (чтобы она не удалилась при перезагрузке Render)
+async function backupDB() {
+  if (!GITHUB_TOKEN || GITHUB_TOKEN === "ТВОЙ_ТОКЕН_ОТ_GITHUB") return;
+  try {
+    const fileContent = fs.readFileSync(DB_PATH).toString('base64');
+    const url = `https://api.github.com/repos/${GITHUB_REPO}/contents/database.sqlite`;
+
+    let sha = null;
+    const getRes = await fetch(url, {
+      headers: { 'Authorization': `token ${GITHUB_TOKEN}` }
+    });
+    if (getRes.ok) {
+      const data = await getRes.json();
+      sha = data.sha;
+    }
+
+    const body = {
+      message: `Auto-backup database ${new Date().toISOString()}`,
+      content: fileContent,
+      branch: 'main'
+    };
+    if (sha) body.sha = sha;
+
+    await fetch(url, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `token ${GITHUB_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body)
+    });
+    console.log("✅ База сохранена в GitHub");
+  } catch (e) {
+    console.error("Ошибка бэкапа:", e);
+  }
+}
 
 // --- ПРОМОКОДЫ ---
 let promos = {
@@ -24,20 +79,43 @@ app.post('/api/apply-promo', (req, res) => {
   if (!code) return res.json({ status: "invalid", message: "Промокод неверный" });
   
   const promo = promos[code.toLowerCase()];
-
   if (!promo) return res.json({ status: "invalid", message: "Промокод неверный" });
   if (promo.usesLeft <= 0) return res.json({ status: "limit", message: "У промокода закончились активации" });
 
-  promo.usesLeft--;
-  if (!userBalances[userId]) userBalances[userId] = 0;
-  userBalances[userId] += promo.coins;
+  db.get('SELECT * FROM players WHERE user_id = ?', [userId], (err, user) => {
+    if (err) return res.json({ status: "invalid", message: "Ошибка БД" });
 
-  res.json({ 
-    status: "success", 
-    message: `Промокод использован, +${promo.coins} монет. Можете возвращаться в игру`,
-    coins: promo.coins
+    if (!user) {
+      db.run('INSERT INTO players (user_id, coins, inventory, promo_used) VALUES (?, 0, ?, ?)', [userId, '[]', '[]'], function(err) {
+        if (err) return res.json({ status: "invalid", message: "Ошибка БД" });
+        user = { user_id: userId, coins: 0, promo_used: '[]' };
+        processPromo(user);
+      });
+    } else {
+      processPromo(user);
+    }
   });
+
+  function processPromo(user) {
+    const promoUsed = JSON.parse(user.promo_used || '[]');
+    if (promoUsed.includes(code.toLowerCase())) {
+      return res.json({ status: "invalid", message: "Вы уже использовали этот промокод" });
+    }
+
+    promo.usesLeft--;
+    const newCoins = Number(user.coins) + promo.coins;
+    const newPromoUsed = JSON.stringify([...promoUsed, code.toLowerCase()]);
+    
+    db.run('UPDATE players SET coins = ?, promo_used = ? WHERE user_id = ?', [newCoins, newPromoUsed, user.user_id], (err) => {
+      if (err) return res.json({ status: "invalid", message: "Ошибка БД" });
+      backupDB(); // Сохраняем базу в GitHub
+      res.json({ status: "success", message: `Промокод использован, +${promo.coins} монет. Можете возвращаться в игру`, coins: promo.coins });
+    });
+  }
 });
+
+// --- КАССА ---
+const pendingInvoices = {}; 
 
 app.post('/api/create-invoice', async (req, res) => {
   const { coins, userId } = req.body;
@@ -48,10 +126,7 @@ app.post('/api/create-invoice', async (req, res) => {
   try {
     const response = await fetch(API_URL + 'createInvoice', {
       method: 'POST',
-      headers: {
-        'Crypto-Pay-API-Token': CRYPTOBOT_TOKEN,
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Crypto-Pay-API-Token': CRYPTOBOT_TOKEN, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         asset: "USDT",
         amount: usdAmount.toFixed(2),
@@ -81,23 +156,51 @@ app.post('/api/cryptobot-webhook', (req, res) => {
 
     if (pendingInvoices[invoiceId]) {
       const { coins, userId } = pendingInvoices[invoiceId];
-      if (!userBalances[userId]) userBalances[userId] = 0;
-      userBalances[userId] += coins;
-      console.log(`✅ Пользователь ${userId} купил ${coins} монет. Баланс: ${userBalances[userId]}`);
+      
+      db.get('SELECT * FROM players WHERE user_id = ?', [userId], (err, user) => {
+        if (!user) {
+          db.run('INSERT INTO players (user_id, coins, inventory) VALUES (?, ?, ?)', [userId, coins, '[]'], () => backupDB());
+        } else {
+          const newCoins = Number(user.coins) + coins;
+          db.run('UPDATE players SET coins = ? WHERE user_id = ?', [newCoins, userId], () => backupDB());
+        }
+      });
+      
       delete pendingInvoices[invoiceId];
     }
   }
   res.sendStatus(200);
 });
 
-app.get('/api/balance/:userId', (req, res) => {
-  res.json({ coins: userBalances[req.params.userId] || 0 });
+// --- СИНХРОНИЗАЦИЯ С ИГРОЙ ---
+app.get('/api/get-player/:userId', (req, res) => {
+  db.get('SELECT * FROM players WHERE user_id = ?', [req.params.userId], (err, user) => {
+    if (!user) {
+      db.run('INSERT INTO players (user_id, coins, inventory) VALUES (?, 0, ?)', [req.params.userId, '[]'], function(err) {
+        res.json({ coins: 0, inventory: [] });
+      });
+    } else {
+      res.json({ coins: Number(user.coins), inventory: JSON.parse(user.inventory || '[]') });
+    }
+  });
 });
 
-app.post('/api/update-balance', (req, res) => {
-  const { userId, coins } = req.body;
-  userBalances[userId] = coins;
-  res.json({ success: true });
+app.post('/api/save-player', (req, res) => {
+  const { userId, coins, inventory } = req.body;
+  
+  db.get('SELECT * FROM players WHERE user_id = ?', [userId], (err, user) => {
+    if (!user) {
+      db.run('INSERT INTO players (user_id, coins, inventory) VALUES (?, ?, ?)', [userId, coins, JSON.stringify(inventory)], () => {
+        backupDB();
+        res.json({ success: true });
+      });
+    } else {
+      db.run('UPDATE players SET coins = ?, inventory = ? WHERE user_id = ?', [coins, JSON.stringify(inventory), userId], () => {
+        backupDB();
+        res.json({ success: true });
+      });
+    }
+  });
 });
 
 const PORT = process.env.PORT || 3000;
