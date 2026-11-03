@@ -81,29 +81,38 @@
       document.getElementById("usdPrice").textContent = "$" + usd.toFixed(2);
     }
 
-    function processPayment() {
-      const amount = parseFloat(document.getElementById("customAmount").value);
-      if (!amount || amount < 50) {
-        alert("Минимальная сумма пополнения — 50 монет!");
-        return;
-      }
+    async function processPayment() {
+  const coins = parseFloat(document.getElementById("customAmount").value);
+  if (!coins || coins < 50) return alert("Минимум 50 монет!");
 
-      const usd = ((amount / 50) * PRICE_PER_50).toFixed(2);
+  const btn = document.getElementById("payBtn");
+  btn.disabled = true;
+  btn.textContent = "Создание счета...";
 
-      // ТУТ ДОЛЖНА БЫТЬ ИНТЕГРАЦИЯ С ПЛАТЕЖНЫМ ШЛЮЗОМ
-      // Например, создание счета через CryptoBot API или редирект на форму ЮKassa.
-      
-      // Пока что симуляция:
-      const confirmPay = confirm(`Вы хотите купить ${amount} монет за $${usd}?\n\n(Это тестовая оплата. В реальности здесь откроется платежный шлюз)`);
-      
-      if (confirmPay) {
-        let savedCoins = parseFloat(localStorage.getItem("oxide_pending_deposit") || "0");
-        localStorage.setItem("oxide_pending_deposit", savedCoins + amount);
-        
-        alert(`Успешно оплачено $${usd}. Баланс пополнится при возвращении в игру.`);
-        try { window.close(); } catch(e) { history.back(); }
-        if (window.opener && !window.opener.closed) { window.opener.location.reload(); }
-      }
+  // Получаем ID игрока из ссылки (или ставим дефолт)
+  const urlParams = new URLSearchParams(window.location.search);
+  const userId = urlParams.get('user') || 'guest';
+
+  try {
+    const res = await fetch('/api/create-invoice', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ coins, userId })
+    });
+    const data = await res.json();
+    
+    if (data.payUrl) {
+      window.location.href = data.payUrl; // Редирект на CryptoBot
+    } else {
+      alert("Ошибка: " + data.error);
+      btn.disabled = false;
+      btn.textContent = "Оплатить";
+    }
+  } catch (err) {
+    alert("Ошибка сети. Сервер Render просыпается, подождите 30 секунд и попробуйте снова.");
+    btn.disabled = false;
+    btn.textContent = "Оплатить";
+  }
     }
   </script>
 </body>
