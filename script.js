@@ -175,6 +175,9 @@ function registerNewImgTags(rootEl) {
   });
 }
 
+const USER_ID = localStorage.getItem("oxide_user_id") || "user_" + Math.random().toString(36).substr(2, 9);
+localStorage.setItem("oxide_user_id", USER_ID);
+
 let state = { coins: 0, players: [] };
 let betPlayers = []; 
 let betCoins = 0; 
@@ -193,6 +196,14 @@ let quickConfig = { mult: [2, 5, 10], chance: [35, 67, 80] };
 function saveState() {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify({ coins: state.coins, players: state.players }));
+    
+    // Отправляем на сервер
+    fetch('/api/update-balance', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: USER_ID, coins: state.coins })
+    }).catch(e => console.warn("Ошибка синхронизации"));
+    
   } catch (e) {}
 }
 
@@ -202,7 +213,7 @@ function loadStateFromLocal() {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return;
     const data = JSON.parse(raw);
-    state.coins = typeof data.coins === "number" ? data.coins : 10;
+    state.coins = typeof data.coins === "number" ? data.coins : 0;
     state.players = Array.isArray(data.players) ? data.players : [];
   } catch (e) {}
 }
@@ -258,7 +269,6 @@ function toggleFavorite(playerIdx) {
   if (AUDIO.enabled) AUDIO.click();
 }
 
-// Глобальные переменные для модалки действий с предметом
 let _currentItemActionIdx = null;
 
 function openItemActionModal(playerIdx) {
@@ -767,6 +777,15 @@ function _doSpinUpgrade(chance) {
   });
 }
 
+function calculateCompensation() {
+  const roll = Math.random() * 100;
+  if (roll <= 50) return 1 + Math.random() * 4;      // 1-5% (шанс 50%)
+  if (roll <= 70) return 5 + Math.random() * 5;      // 5-10% (шанс 20%)
+  if (roll <= 95) return 10 + Math.random() * 10;    // 10-20% (шанс 25%)
+  if (roll <= 99) return 20 + Math.random() * 10;    // 20-30% (шанс 4%)
+  return 30 + Math.random() * 20;                    // 30-50% (шанс 1%)
+}
+
 async function finishSpin(outcome, totalBet, chanceUsed) {
   const target = upgradeTo;
   const spentCoins = betCoins;
@@ -798,29 +817,16 @@ async function finishSpin(outcome, totalBet, chanceUsed) {
     await animSleep(1400);
     closeAnimOverlay();
     return;
-
-    removeBetPlayersFromCollection(betPlayersCopy);
-
-// Запускаем анимацию компенсации
-animTitle.textContent = "💥 Проигрыш";
-animSub.textContent = "Рулетка компенсации...";
-goldChainPanel.classList.remove("show"); // Скрываем панель ставок
-overlayWheelContainer.style.display = "none"; // Скрываем старое колесо
-
-const compPercent = calculateCompensation();
-const refund = Math.floor((totalBet * compPercent) / 100);
-
-// Анимация рулетки (просто быстрое мелькание циферок для визуала)
-let ticks = 0;
-const tickInterval = setInterval(() => {
-  animSub.innerHTML = `🎰 <span style="color:#ffd700">${(Math.random() * 50).toFixed(1)}%</span>`;
-  if (++ticks > 15) {
-    clearInterval(tickInterval);
-    animSub.innerHTML = `🎉 Выпало: <b>${compPercent.toFixed(1)}%</b> = +${refund} <img src="moneta.png" style="width: 14px; height: 14px; border-radius: 50%; vertical-align: middle;">`;
   }
-}, 80);
 
-state.coins = state.coins - spentCoins + refund;
+  // LOSE
+  removeBetPlayersFromCollection(betPlayersCopy);
+  state.coins -= spentCoins;
+  
+  const compPercent = calculateCompensation();
+  const refund = Math.floor((totalBet * compPercent) / 100);
+  
+  state.coins += refund;
 
   AUDIO.lose();
   betPlayers = []; betCoins = 0; if(addCoinsInput) addCoinsInput.value = 0; upgradeTo = null; activeQuick = null;
@@ -830,6 +836,17 @@ state.coins = state.coins - spentCoins + refund;
 
   showGoldChainPanel(stakeForPanel, target, chanceUsed, stakePlayersForPanel);
   animTitle.textContent = "💥 Проигрыш";
+  animSub.textContent = "Рулетка компенсации...";
+  
+  // Анимация рулетки компенсации
+  let ticks = 0;
+  const tickInterval = setInterval(() => {
+    animSub.innerHTML = `🎰 <span style="color:#ffd700">${(Math.random() * 50).toFixed(1)}%</span>`;
+    if (++ticks > 15) {
+      clearInterval(tickInterval);
+      animSub.innerHTML = `🎉 Выпало: <b>${compPercent.toFixed(1)}%</b> = +${refund} <img src="moneta.png" style="width: 14px; height: 14px; border-radius: 50%; vertical-align: middle;">`;
+    }
+  }, 80);
 
   await animSleep(1800);
   closeAnimOverlay();
@@ -1029,15 +1046,6 @@ window.chooseTo = chooseTo;
 window.buyPlayer = buyPlayer;
 window.openItemActionModal = openItemActionModal;
 
-// Функция, которую вызывает окно кассы
-window.receiveDeposit = function(amount) {
-  state.coins += amount;
-  updateCoins();
-  saveState();
-  showToast(`Баланс пополнен на ${amount} монет!`, "#3fb950");
-};
-
-// Проверка на отложенный депозит (если окно кассы закрылось, а игра нет)
 function checkPendingDeposit() {
   const pending = parseFloat(localStorage.getItem("oxide_pending_deposit") || "0");
   if (pending > 0) {
@@ -1097,8 +1105,8 @@ if (document.getElementById("depositClose")) {
 }
 if (document.getElementById("depositGoBtn")) {
   document.getElementById("depositGoBtn").addEventListener("click", () => {
-    // Ссылка на кассу (файл deposit.html в той же папке)
-    const PAYMENT_URL = "deposit.html"; 
+    // Ссылка на кассу с передачей ID игрока
+    const PAYMENT_URL = "deposit.html?user=" + USER_ID; 
     window.open(PAYMENT_URL, "_blank");
   });
 }
@@ -1181,12 +1189,3 @@ document.querySelectorAll(".bottom-nav .nav-item[data-tab]").forEach(btn => {
 window.addEventListener("DOMContentLoaded", () => {
   initGameUI();
 });
-
-function calculateCompensation() {
-  const roll = Math.random() * 100;
-  if (roll <= 50) return 1 + Math.random() * 4;      // 1-5% (шанс 50%)
-  if (roll <= 70) return 5 + Math.random() * 5;      // 5-10% (шанс 20%)
-  if (roll <= 95) return 10 + Math.random() * 10;    // 10-20% (шанс 25%)
-  if (roll <= 99) return 20 + Math.random() * 10;    // 20-30% (шанс 4%)
-  return 30 + Math.random() * 20;                    // 30-50% (шанс 1%)
-}
