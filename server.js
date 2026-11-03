@@ -7,7 +7,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(__dirname));
 
-const CRYPTOBOT_TOKEN = "ТВОЙ_ТОКЕН_ОТ_CRYPTOBOT";
+const CRYPTOBOT_TOKEN = "666950:AAwEKoxn7wiMgilNQp0hwtNSmmwB04hhYLz";
 const PRICE_PER_50 = 2.31;
 const API_URL = "https://pay.crypt.bot/api/";
 
