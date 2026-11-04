@@ -110,7 +110,6 @@ const PLAYERS = [
   { name: "Безголовая компания", price: 131, rarity: "epic", img: "безголовая_компания.png" },
   { name: "Обитель сновидений", price: 131, rarity: "epic", img: "обитель_сновидений.png" }
 ];
-  
 
 const _processedImages = new Map();
 const _processingInFlight = new Set();
@@ -866,13 +865,9 @@ function calculateCompensation() {
 function getCompensationItem(totalBet, compPercent) {
   const targetPrice = (totalBet * compPercent) / 100;
   const availableItems = PLAYERS.filter(p => !p.no_withdraw);
-  let bestItem = availableItems[0];
-  let minDiff = Math.abs(bestItem.price - targetPrice);
-  for (const item of availableItems) {
-    const diff = Math.abs(item.price - targetPrice);
-    if (diff < minDiff) { minDiff = diff; bestItem = item; }
-  }
-  return bestItem;
+  availableItems.sort((a, b) => Math.abs(a.price - targetPrice) - Math.abs(b.price - targetPrice));
+  const topCandidates = availableItems.slice(0, 3);
+  return topCandidates[Math.floor(Math.random() * topCandidates.length)];
 }
 
 async function finishSpin(outcome, totalBet, chanceUsed) {
@@ -950,17 +945,58 @@ async function finishSpin(outcome, totalBet, chanceUsed) {
   animTitle.textContent = "💥 Проигрыш";
   animSub.textContent = "Рулетка компенсации...";
   
-  let ticks = 0;
-  const tickInterval = setInterval(() => {
-    animSub.innerHTML = `🎰 <span style="color:#ffd700">${(Math.random() * 50).toFixed(1)}%</span>`;
-    if (++ticks > 15) {
-      clearInterval(tickInterval);
-      animSub.innerHTML = `🎉 Утешение: <b>${compItem.name}</b> (~${compItem.price} монет)`;
-      showAnimCard(compItem);
-    }
-  }, 80);
+  overlayWheelContainer.style.display = "none";
+  
+  const trackHtml = [];
+  const pool = PLAYERS.filter(p => !p.no_withdraw);
+  for (let i = 0; i < 50; i++) {
+    const rand = pool[Math.floor(Math.random() * pool.length)];
+    trackHtml.push(rand);
+  }
+  
+  trackHtml[45] = compItem;
 
-  await animSleep(2200);
+  const rouletteContainer = document.createElement("div");
+  rouletteContainer.className = "case-menu-roulette";
+  rouletteContainer.style.width = "100%";
+  rouletteContainer.style.maxWidth = "350px";
+  rouletteContainer.innerHTML = `
+    <div class="case-menu-roulette-track">
+      ${trackHtml.map(p => {
+        return `<div class="case-roulette-item bg-${p.rarity || 'default'}">
+          ${playerImgTag(p, "roul-img")}
+          <div class="roul-name">${p.name}</div>
+          <div class="roul-price">${p.price}</div>
+        </div>`;
+      }).join("")}
+    </div>
+    <div class="case-roulette-pointer"></div>
+  `;
+  
+  const animContent = document.querySelector(".anim-content");
+  animContent.insertBefore(rouletteContainer, animSub);
+  registerNewImgTags(rouletteContainer);
+  
+  setTimeout(() => {
+    const track = rouletteContainer.querySelector(".case-menu-roulette-track");
+    const itemWidth = 110;
+    const centerOffset = rouletteContainer.clientWidth / 2 - itemWidth / 2;
+    const scrollAmount = (45 * itemWidth) - centerOffset;
+    track.style.transition = "transform 5s cubic-bezier(0.15, 0.9, 0.3, 1)";
+    track.style.transform = `translateX(-${scrollAmount}px)`;
+  }, 100);
+
+  for (let i = 0; i < 50; i++) setTimeout(() => AUDIO.tick(), i * 90);
+
+  await animSleep(5200);
+  rouletteContainer.remove();
+  
+  animTitle.textContent = "🎉 Утешение!";
+  animSub.innerHTML = `Выпал предмет: <b>${compItem.name}</b> (~${compItem.price} монет)`;
+  
+  showAnimCard(compItem);
+  
+  await animSleep(2000);
   closeAnimOverlay();
 }
 
@@ -1308,4 +1344,4 @@ function startBalancePolling() {
       }
     } catch (e) {}
   }, 5000);
-      }
+    }
