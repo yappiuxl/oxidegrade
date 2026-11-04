@@ -1,5 +1,5 @@
 // ============================================================
-// Oxidegrade — client script
+// Oxidegrade — client script (FINAL FIXED)
 // ============================================================
 
 const AUDIO = {
@@ -865,9 +865,12 @@ function calculateCompensation() {
 function getCompensationItem(totalBet, compPercent) {
   const targetPrice = (totalBet * compPercent) / 100;
   const availableItems = PLAYERS.filter(p => !p.no_withdraw);
-  availableItems.sort((a, b) => Math.abs(a.price - targetPrice) - Math.abs(b.price - targetPrice));
-  const topCandidates = availableItems.slice(0, 3);
-  return topCandidates[Math.floor(Math.random() * topCandidates.length)];
+  let candidates = availableItems.filter(p => p.price <= targetPrice);
+  if (candidates.length === 0) {
+    return availableItems.sort((a, b) => a.price - b.price)[0];
+  }
+  candidates.sort((a, b) => b.price - a.price);
+  return candidates[0];
 }
 
 async function finishSpin(outcome, totalBet, chanceUsed) {
@@ -1353,4 +1356,4 @@ function startBalancePolling() {
       }
     } catch (e) {}
   }, 5000);
-  }
+    }
