@@ -271,7 +271,7 @@ app.post('/api/request-withdraw', (req, res) => {
 app.get('/api/admin/withdrawals', (req, res) => {
   // Проверка на админа (можно передавать секретный ключ в заголовке)
   const adminKey = req.headers['admin-key'];
-  if (adminKey !== "SUPER_SECRET_ADMIN_KEY_123") {
+  if (adminKey !== "14881488") {
     return res.status(403).json({ error: "Доступ запрещен" });
   }
   
@@ -284,7 +284,7 @@ app.get('/api/admin/withdrawals', (req, res) => {
 // 3. Отметить заявку как выполненную (только для админа)
 app.post('/api/admin/complete-withdrawal', (req, res) => {
   const adminKey = req.headers['admin-key'];
-  if (adminKey !== "SUPER_SECRET_ADMIN_KEY_123") {
+  if (adminKey !== "14881488") {
     return res.status(403).json({ error: "Доступ запрещен" });
   }
   
