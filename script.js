@@ -110,6 +110,7 @@ const PLAYERS = [
   { name: "Безголовая компания", price: 131, rarity: "epic", img: "безголовая_компания.png" },
   { name: "Обитель сновидений", price: 131, rarity: "epic", img: "обитель_сновидений.png" }
 ];
+
 const _processedImages = new Map();
 const _processingInFlight = new Set();
 const _imgProcessFailed = new Set();
@@ -861,25 +862,15 @@ function calculateCompensation() {
   return 30 + Math.random() * 20;                    // 30-50%
 }
 
-// Функция подбора предмета под выпавший процент
 function getCompensationItem(totalBet, compPercent) {
   const targetPrice = (totalBet * compPercent) / 100;
-  
-  // Берем только предметы, которые можно выводить (исключаем ресурсы)
   const availableItems = PLAYERS.filter(p => !p.no_withdraw);
-  
-  // Ищем предмет, цена которого ближе всего к targetPrice
   let bestItem = availableItems[0];
   let minDiff = Math.abs(bestItem.price - targetPrice);
-  
   for (const item of availableItems) {
     const diff = Math.abs(item.price - targetPrice);
-    if (diff < minDiff) {
-      minDiff = diff;
-      bestItem = item;
-    }
+    if (diff < minDiff) { minDiff = diff; bestItem = item; }
   }
-  
   return bestItem;
 }
 
@@ -917,16 +908,37 @@ async function finishSpin(outcome, totalBet, chanceUsed) {
   }
 
   // LOSE
-const hasNoWithdrawItem = betPlayersCopy.some(idx => {
-  const p = state.players[idx];
-  return p && p.no_withdraw === true;
-});
+  const hasNoWithdrawItem = betPlayersCopy.some(idx => {
+    const p = state.players[idx];
+    return p && p.no_withdraw === true;
+  });
 
-removeBetPlayersFromCollection(betPlayersCopy);
-state.coins -= spentCoins;
+  removeBetPlayersFromCollection(betPlayersCopy);
+  state.coins -= spentCoins;
 
-if (hasNoWithdrawItem) {
-  // Если в ставке были ресурсы — утешительный не дается
+  if (hasNoWithdrawItem) {
+    AUDIO.lose();
+    betPlayers = []; betCoins = 0; if(addCoinsInput) addCoinsInput.value = 0; upgradeTo = null; activeQuick = null;
+    updateCoins(); renderBetSlots(); renderTargetBox();
+    if (isTabActive("collection")) renderCollection();
+    refreshUpgrade(); saveState();
+
+    showGoldChainPanel(stakeForPanel, target, chanceUsed, stakePlayersForPanel);
+    animTitle.textContent = "💥 Проигрыш";
+    animSub.textContent = "Ресурсы не дают утешительный приз";
+    
+    await animSleep(1800);
+    closeAnimOverlay();
+    return;
+  }
+
+  const compPercent = calculateCompensation();
+  const compItem = getCompensationItem(totalBet, compPercent);
+
+  if (compItem) {
+    state.players.push(snapshotPlayer(compItem));
+  }
+
   AUDIO.lose();
   betPlayers = []; betCoins = 0; if(addCoinsInput) addCoinsInput.value = 0; upgradeTo = null; activeQuick = null;
   updateCoins(); renderBetSlots(); renderTargetBox();
@@ -935,44 +947,21 @@ if (hasNoWithdrawItem) {
 
   showGoldChainPanel(stakeForPanel, target, chanceUsed, stakePlayersForPanel);
   animTitle.textContent = "💥 Проигрыш";
-  animSub.textContent = "Ресурсы не дают утешительный приз";
+  animSub.textContent = "Рулетка компенсации...";
   
-  await animSleep(1800);
+  let ticks = 0;
+  const tickInterval = setInterval(() => {
+    animSub.innerHTML = `🎰 <span style="color:#ffd700">${(Math.random() * 50).toFixed(1)}%</span>`;
+    if (++ticks > 15) {
+      clearInterval(tickInterval);
+      animSub.innerHTML = `🎉 Утешение: <b>${compItem.name}</b> (~${compItem.price} монет)`;
+      showAnimCard(compItem);
+    }
+  }, 80);
+
+  await animSleep(2200);
   closeAnimOverlay();
-  return;
 }
-
-// Иначе выдаем утешительный предмет
-const compPercent = calculateCompensation();
-const compItem = getCompensationItem(totalBet, compPercent);
-
-if (compItem) {
-  state.players.push(snapshotPlayer(compItem));
-}
-
-AUDIO.lose();
-betPlayers = []; betCoins = 0; if(addCoinsInput) addCoinsInput.value = 0; upgradeTo = null; activeQuick = null;
-updateCoins(); renderBetSlots(); renderTargetBox();
-if (isTabActive("collection")) renderCollection();
-refreshUpgrade(); saveState();
-
-showGoldChainPanel(stakeForPanel, target, chanceUsed, stakePlayersForPanel);
-animTitle.textContent = "💥 Проигрыш";
-animSub.textContent = "Рулетка компенсации...";
-
-let ticks = 0;
-const tickInterval = setInterval(() => {
-  animSub.innerHTML = `🎰 <span style="color:#ffd700">${(Math.random() * 50).toFixed(1)}%</span>`;
-  if (++ticks > 15) {
-    clearInterval(tickInterval);
-    animSub.innerHTML = `🎉 Утешение: <b>${compItem.name}</b> (~${compItem.price} монет)`;
-    // Показываем карточку утешительного предмета
-    showAnimCard(compItem);
-  }
-}, 80);
-
-await animSleep(2200);
-closeAnimOverlay();
 
 const upgradeAnimOverlay = document.getElementById("upgradeAnimOverlay");
 const animCardWrap = document.getElementById("animCardWrap");
@@ -1318,4 +1307,4 @@ function startBalancePolling() {
       }
     } catch (e) {}
   }, 5000);
-                        }
+      }
