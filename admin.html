@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Админ-панель — Oxidegrade</title>
+  <style>
+    body { background: #050505; color: #fff; font-family: sans-serif; padding: 20px; }
+    .container { max-width: 800px; margin: 0 auto; }
+    h1 { color: #da3633; text-transform: uppercase; margin-bottom: 20px; }
+    .request-card { background: #111; border: 1px solid #333; padding: 15px; margin-bottom: 10px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; }
+    .info { flex: 1; }
+    .info div { margin-bottom: 5px; }
+    .nick { color: #58a6ff; font-weight: bold; }
+    .item { color: #ffd700; font-weight: bold; }
+    .price { color: #3fb950; }
+    .date { color: #8b949e; font-size: 12px; }
+    .status { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; margin-bottom: 8px; display: inline-block; }
+    .status.pending { background: #d29922; color: #000; }
+    .status.completed { background: #238636; color: #fff; }
+    button { background: #238636; color: #fff; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; }
+    button:disabled { background: #333; color: #666; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>Заявки на вывод</h1>
+  <div id="list"></div>
+</div>
+
+<script>
+  const urlParams = new URLSearchParams(window.location.search);
+  const adminKey = urlParams.get('key');
+
+  if (!adminKey) {
+    document.body.innerHTML = "<h1 style='color:red;'>Доступ запрещен. Введите ключ.</h1>";
+  }
+
+  async function loadRequests() {
+    const res = await fetch('/api/admin/withdrawals', {
+      headers: { 'admin-key': adminKey }
+    });
+    
+    if (res.status === 403) {
+      document.body.innerHTML = "<h1 style='color:red;'>Неверный ключ!</h1>";
+      return;
+    }
+
+    const data = await res.json();
+    const list = document.getElementById("list");
+    
+    if (data.length === 0) {
+      list.innerHTML = "<p style='color:#8b949e;'>Заявок пока нет.</p>";
+      return;
+    }
+
+    list.innerHTML = data.map(r => `
+      <div class="request-card">
+        <div class="info">
+          <div>ID: <span class="nick">${r.user_id}</span></div>
+          <div>Предмет: <span class="item">${r.item_name}</span></div>
+          <div>Цена: <span class="price">${r.item_price} монет</span></div>
+          <div class="date">${new Date(r.created_at).toLocaleString()}</div>
+          <div class="status ${r.status}">${r.status === 'pending' ? 'В ожидании' : 'Выполнено'}</div>
+        </div>
+        ${r.status === 'pending' 
+          ? `<button onclick="complete(${r.id})">ВЫПОЛНЕНО</button>` 
+          : `<span style="color:#3fb950;font-weight:bold;">✓</span>`}
+      </div>
+    `).join("");
+  }
+
+  async function complete(id) {
+    if (!confirm("Вы уверены, что выдали предмет игроку?")) return;
+    
+    await fetch('/api/admin/complete-withdrawal', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'admin-key': adminKey },
+      body: JSON.stringify({ requestId: id })
+    });
+    
+    loadRequests();
+  }
+
+  if (adminKey) loadRequests();
+</script>
+</body>
+</html>
