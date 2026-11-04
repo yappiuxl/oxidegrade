@@ -855,11 +855,11 @@ function _doSpinUpgrade(chance) {
 
 function calculateCompensation() {
   const roll = Math.random() * 100;
-  if (roll <= 50) return 1 + Math.random() * 4;      // 1-5%
-  if (roll <= 70) return 5 + Math.random() * 5;      // 5-10%
-  if (roll <= 95) return 10 + Math.random() * 10;    // 10-20%
-  if (roll <= 99) return 20 + Math.random() * 10;    // 20-30%
-  return 30 + Math.random() * 20;                    // 30-50%
+  if (roll <= 50) return 1 + Math.random() * 4;
+  if (roll <= 70) return 5 + Math.random() * 5;
+  if (roll <= 95) return 10 + Math.random() * 10;
+  if (roll <= 99) return 20 + Math.random() * 10;
+  return 30 + Math.random() * 20;
 }
 
 function getCompensationItem(totalBet, compPercent) {
@@ -957,20 +957,29 @@ async function finishSpin(outcome, totalBet, chanceUsed) {
   trackHtml[45] = compItem;
 
   const rouletteContainer = document.createElement("div");
-  rouletteContainer.className = "case-menu-roulette";
-  rouletteContainer.style.width = "100%";
-  rouletteContainer.style.maxWidth = "350px";
+  rouletteContainer.style.cssText = `
+    position: relative; 
+    width: 100%; 
+    max-width: 350px; 
+    height: 120px; 
+    overflow: hidden; 
+    border: 2px solid #30363d; 
+    border-radius: 12px; 
+    background: #0d1117;
+    margin: 15px 0;
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
+  `;
+  
   rouletteContainer.innerHTML = `
-    <div class="case-menu-roulette-track">
+    <div class="custom-track" style="display: flex; gap: 10px; position: absolute; left: 0; top: 0; height: 100%; align-items: center; padding: 0 10px;">
       ${trackHtml.map(p => {
-        return `<div class="case-roulette-item bg-${p.rarity || 'default'}">
-          ${playerImgTag(p, "roul-img")}
-          <div class="roul-name">${p.name}</div>
-          <div class="roul-price">${p.price}</div>
+        return `<div style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100px; height: 90px; flex-shrink: 0; background: #161b22; border: 1px solid #30363d; border-radius: 8px;">
+          <div style="width: 50px; height: 50px;">${playerImgTag(p, "")}</div>
+          <div style="font-size: 10px; color: #fff; margin-top: 5px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 90%; text-align: center;">${p.name}</div>
         </div>`;
       }).join("")}
     </div>
-    <div class="case-roulette-pointer"></div>
+    <div style="position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; background: #ffd700; transform: translateX(-50%); box-shadow: 0 0 10px #ffd700; z-index: 10;"></div>
   `;
   
   const animContent = document.querySelector(".anim-content");
@@ -978,10 +987,10 @@ async function finishSpin(outcome, totalBet, chanceUsed) {
   registerNewImgTags(rouletteContainer);
   
   setTimeout(() => {
-    const track = rouletteContainer.querySelector(".case-menu-roulette-track");
+    const track = rouletteContainer.querySelector(".custom-track");
     const itemWidth = 110;
-    const centerOffset = rouletteContainer.clientWidth / 2 - itemWidth / 2;
-    const scrollAmount = (45 * itemWidth) - centerOffset;
+    const centerOffset = rouletteContainer.clientWidth / 2 - 50;
+    const scrollAmount = (45 * itemWidth) - centerOffset + 10; 
     track.style.transition = "transform 5s cubic-bezier(0.15, 0.9, 0.3, 1)";
     track.style.transform = `translateX(-${scrollAmount}px)`;
   }, 100);
@@ -1344,4 +1353,4 @@ function startBalancePolling() {
       }
     } catch (e) {}
   }, 5000);
-    }
+  }
