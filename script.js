@@ -92,24 +92,25 @@ const PLAYERS = [
   { name: "Арбалет", price: 12, rarity: "default", img: "арбалет.png" },
   { name: "Корпус винтовки", price: 12, rarity: "default", no_withdraw: true, img: "корпус_винтовки.png" },
   { name: "Корпус пулемёта", price: 12, rarity: "default", no_withdraw: true, img: "корпус_пулемёта.png" },
-  { name: "Костяная защита ног", price: 13, rarity: "default", img: "костяная_защита_ног.png" }, 
-  { name: "Костяная обувь", price: 13, rarity: "default", img: "костяная_обувь.png" },
+  { name: "Костяная защита ног", price: 13, rarity: "default" }, 
+  { name: "Костяная обувь", price: 13, rarity: "default" },
   { name: "Ремонтный шкаф", price: 15, rarity: "default", img: "ремонтный_шкаф.png" },
   { name: "Костяной нагрудник", price: 20, rarity: "default", img: "костяной_нагрудник.png" },
   { name: "Верстак", price: 30, rarity: "default", img: "верстак.png" },
   { name: "Руку на отсичение!", price: 31, rarity: "epic", img: "руку_на_отсичение.png" },
   { name: "Ангел в слизи", price: 31, rarity: "epic", img: "ангел_в_слизи.png" },
   { name: "Камера видеонаблюдения", price: 35, rarity: "default", img: "камера_видеонаблюдения.png" },
-  { name: "Компьютер наведения", price: 35, rarity: "default", img: "компьютер_наведения.png" }, 
+  { name: "Компьютер наведения", price: 35, rarity: "default" }, 
   { name: "Голографический прицел", price: 75, rarity: "default", img: "голографический_прицел.png" },
   { name: "Увеличенный магазин", price: 75, rarity: "default", img: "увеличенный_магазин.png" },
   { name: "Дульный тормоз", price: 100, rarity: "default", img: "дульный_тормоз.png" },
-  { name: "Компенсатор", price: 125, rarity: "default", img: "компенсатор.png" },
+  { name: "Компенсатор", price: 125, rarity: "default" },
   { name: "Ночной дозор", price: 131, rarity: "legendary", img: "ночной_дозор.png" },
   { name: "Страж полнокровия", price: 131, rarity: "epic", img: "страж_полнокровия.png" },
   { name: "Безголовая компания", price: 131, rarity: "epic", img: "безголовая_компания.png" },
   { name: "Обитель сновидений", price: 131, rarity: "epic", img: "обитель_сновидений.png" }
 ];
+  
 
 const _processedImages = new Map();
 const _processingInFlight = new Set();
