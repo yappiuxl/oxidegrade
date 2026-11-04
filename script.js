@@ -354,9 +354,37 @@ if(document.getElementById("itemActionSellBtn")) {
 }
 
 if(document.getElementById("itemActionWithdrawBtn")) {
-  document.getElementById("itemActionWithdrawBtn").addEventListener("click", () => {
+  document.getElementById("itemActionWithdrawBtn").addEventListener("click", async () => {
+    if (_currentItemActionIdx === null) return;
+    const p = state.players[_currentItemActionIdx];
+    if (!p) return;
+
     document.getElementById("itemActionModal").classList.add("hidden");
-    document.getElementById("withdrawModal").classList.remove("hidden");
+
+    try {
+      const res = await fetch('/api/request-withdraw', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: USER_ID, itemName: p.name, itemPrice: p.price })
+      });
+      const data = await res.json();
+      
+      if (data.success) {
+        // Удаляем предмет локально
+        removePlayerAtIndex(_currentItemActionIdx);
+        updateCoins(); saveState();
+        if (isTabActive("collection")) renderCollection();
+        renderBetSlots(); refreshUpgrade();
+        
+        showToast(data.message, "#3fb950");
+        // Открываем окно с ТГ
+        document.getElementById("withdrawModal").classList.remove("hidden");
+      } else {
+        alert(data.error);
+      }
+    } catch (e) {
+      alert("Ошибка сети. Попробуйте позже.");
+    }
     _currentItemActionIdx = null;
   });
 }
