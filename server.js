@@ -235,64 +235,35 @@ app.post('/api/tg-webhook', async (req, res) => {
   res.sendStatus(200);
 });
 
-// --- СИСТЕМА ВЫВОДА ПРЕДМЕТОВ ---
-
 // 1. Создать заявку (вызывается из игры)
 app.post('/api/request-withdraw', (req, res) => {
   const { userId, itemName, itemPrice } = req.body;
   
+  // Находим предмет в базе, чтобы проверить флаг
+  const itemBase = PLAYERS.find(p => p.name === itemName);
+  if (itemBase && itemBase.no_withdraw) {
+    return res.status(400).json({ error: "Этот предмет нельзя выводить (только продажа)!" });
+  }
+
   db.get('SELECT * FROM players WHERE user_id = ?', [userId], (err, user) => {
     if (!user) return res.status(400).json({ error: "Пользователь не найден" });
     
     const inventory = JSON.parse(user.inventory || '[]');
-    // Ищем предмет в инвентаре
     const itemIndex = inventory.findIndex(p => p.name === itemName && p.price === itemPrice);
     
     if (itemIndex === -1) return res.status(400).json({ error: "Предмет не найден в инвентаре" });
     
-    // Удаляем предмет из инвентаря
     inventory.splice(itemIndex, 1);
     
-    // Обновляем инвентарь в базе
     db.run('UPDATE players SET inventory = ? WHERE user_id = ?', [JSON.stringify(inventory), userId], (err) => {
       if (err) return res.status(500).json({ error: "Ошибка БД" });
       
-      // Создаем заявку
       db.run('INSERT INTO withdrawals (user_id, item_name, item_price) VALUES (?, ?, ?)', [userId, itemName, itemPrice], (err) => {
         if (err) return res.status(500).json({ error: "Ошибка создания заявки" });
         backupDB();
         res.json({ success: true, message: "Заявка создана! Напишите админу в Telegram для получения." });
       });
     });
-  });
-});
-
-// 2. Получить все заявки (только для админа)
-app.get('/api/admin/withdrawals', (req, res) => {
-  // Проверка на админа (можно передавать секретный ключ в заголовке)
-  const adminKey = req.headers['admin-key'];
-  if (adminKey !== "14881488") {
-    return res.status(403).json({ error: "Доступ запрещен" });
-  }
-  
-  db.all('SELECT * FROM withdrawals ORDER BY created_at DESC', [], (err, rows) => {
-    if (err) return res.status(500).json({ error: "Ошибка БД" });
-    res.json(rows);
-  });
-});
-
-// 3. Отметить заявку как выполненную (только для админа)
-app.post('/api/admin/complete-withdrawal', (req, res) => {
-  const adminKey = req.headers['admin-key'];
-  if (adminKey !== "14881488") {
-    return res.status(403).json({ error: "Доступ запрещен" });
-  }
-  
-  const { requestId } = req.body;
-  db.run('UPDATE withdrawals SET status = "completed" WHERE id = ?', [requestId], (err) => {
-    if (err) return res.status(500).json({ error: "Ошибка БД" });
-    backupDB();
-    res.json({ success: true });
   });
 });
 
