@@ -82,7 +82,7 @@ const PLAYERS = [
   { name: "Ткань", price: 2, rarity: "default", no_withdraw: true, img: "ткань.png" },
   { name: "Кодовый замок", price: 5, rarity: "default", img: "кодовый_замок.png" },
   { name: "МВК", price: 5, rarity: "default", no_withdraw: true },
-  { name: "Листовый металл", price: 7, rarity: "default", no_withdraw: true, img: "листовый_металл.png" },
+  { name: "Листовый металл", price: 7, rarity: "default", no_withdraw: true },
   { name: "Спальный мешок", price: 8, rarity: "default", img: "спальный_мешок.png" },
   { name: "Большой ящик для хранения", price: 8, rarity: "default", img: "большой_ящик.png" },
   { name: "Костяной шлем", price: 8, rarity: "default", img: "костяной_шлем.png" },
