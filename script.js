@@ -68,13 +68,30 @@ function getWheelDuration() {
 }
 
 const PLAYERS = [
+  { name: "Древесина", price: 0.05, rarity: "default", no_withdraw: true },
+  { name: "Камень", price: 0.05, rarity: "default", no_withdraw: true },
+  { name: "Уголь", price: 0.1, rarity: "default", no_withdraw: true },
+  { name: "Металлические фрагменты", price: 0.15, rarity: "default", no_withdraw: true },
+  { name: "Кость", price: 0.35, rarity: "default", no_withdraw: true },
+  { name: "Металлолом", price: 0.5, rarity: "default", no_withdraw: true },
+  { name: "Болт", price: 0.5, rarity: "default", no_withdraw: true },
+  { name: "Кожа", price: 0.6, rarity: "default", no_withdraw: true },
+  { name: "Животный жир", price: 0.6, rarity: "default", no_withdraw: true },
+  { name: "Бутылка с водой", price: 0.8, rarity: "default", no_withdraw: true },
+  { name: "Сера", price: 1, rarity: "default", no_withdraw: true },
+  { name: "Ткань", price: 2, rarity: "default", no_withdraw: true },
   { name: "Кодовый замок", price: 5, rarity: "default", img: "кодовый_замок.png" },
+  { name: "МВК", price: 5, rarity: "default", no_withdraw: true },
+  { name: "Листовый металл", price: 7, rarity: "default", no_withdraw: true },
   { name: "Спальный мешок", price: 8, rarity: "default", img: "спальный_мешок.png" },
   { name: "Большой ящик для хранения", price: 8, rarity: "default", img: "большой_ящик.png" },
   { name: "Костяной шлем", price: 8, rarity: "default", img: "костяной_шлем.png" },
+  { name: "Технический мусор", price: 8, rarity: "default", no_withdraw: true },
   { name: "Печь", price: 10, rarity: "default", img: "печь.png" },
   { name: "Железная дверь", price: 10, rarity: "default", img: "железная_дверь.png" },
   { name: "Арбалет", price: 12, rarity: "default", img: "арбалет.png" },
+  { name: "Корпус винтовки", price: 12, rarity: "default", no_withdraw: true },
+  { name: "Корпус пулемёта", price: 12, rarity: "default", no_withdraw: true },
   { name: "Костяная защита ног", price: 13, rarity: "default" }, 
   { name: "Костяная обувь", price: 13, rarity: "default" },
   { name: "Ремонтный шкаф", price: 15, rarity: "default", img: "ремонтный_шкаф.png" },
@@ -155,6 +172,7 @@ function snapshotPlayer(p) {
   const s = { name: p.name, price: p.price };
   if (p.img) s.img = p.img;
   if (p.favorite) s.favorite = true;
+  if (p.no_withdraw) s.no_withdraw = true; // <-- ДОБАВИТЬ ЭТО
   return s;
 }
 
@@ -314,23 +332,19 @@ function openItemActionModal(playerIdx) {
     </div>
   `;
   registerNewImgTags(infoEl);
+  
+  // Скрываем или показываем кнопку вывода
+  const withdrawBtn = document.getElementById("itemActionWithdrawBtn");
+  if (withdrawBtn) {
+    if (p.no_withdraw) {
+      withdrawBtn.style.display = "none";
+    } else {
+      withdrawBtn.style.display = "block";
+    }
+  }
+
   document.getElementById("itemActionModal").classList.remove("hidden");
 }
-
-if(document.getElementById("itemActionClose")) {
-  document.getElementById("itemActionClose").addEventListener("click", () => {
-    document.getElementById("itemActionModal").classList.add("hidden");
-    _currentItemActionIdx = null;
-  });
-}
-
-if(document.getElementById("itemActionSellBtn")) {
-  document.getElementById("itemActionSellBtn").addEventListener("click", () => {
-    if (_currentItemActionIdx === null) return;
-    const p = state.players[_currentItemActionIdx];
-    if (!p) return;
-    
-    document.getElementById("itemActionModal").classList.add("hidden");
 
     const doSell = () => {
       removePlayerAtIndex(_currentItemActionIdx);
