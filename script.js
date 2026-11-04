@@ -855,11 +855,33 @@ function _doSpinUpgrade(chance) {
 
 function calculateCompensation() {
   const roll = Math.random() * 100;
-  if (roll <= 50) return 1 + Math.random() * 4;      // 1-5% (шанс 50%)
-  if (roll <= 70) return 5 + Math.random() * 5;      // 5-10% (шанс 20%)
-  if (roll <= 95) return 10 + Math.random() * 10;    // 10-20% (шанс 25%)
-  if (roll <= 99) return 20 + Math.random() * 10;    // 20-30% (шанс 4%)
-  return 30 + Math.random() * 20;                    // 30-50% (шанс 1%)
+  if (roll <= 50) return 1 + Math.random() * 4;      // 1-5%
+  if (roll <= 70) return 5 + Math.random() * 5;      // 5-10%
+  if (roll <= 95) return 10 + Math.random() * 10;    // 10-20%
+  if (roll <= 99) return 20 + Math.random() * 10;    // 20-30%
+  return 30 + Math.random() * 20;                    // 30-50%
+}
+
+// Функция подбора предмета под выпавший процент
+function getCompensationItem(totalBet, compPercent) {
+  const targetPrice = (totalBet * compPercent) / 100;
+  
+  // Берем только предметы, которые можно выводить (исключаем ресурсы)
+  const availableItems = PLAYERS.filter(p => !p.no_withdraw);
+  
+  // Ищем предмет, цена которого ближе всего к targetPrice
+  let bestItem = availableItems[0];
+  let minDiff = Math.abs(bestItem.price - targetPrice);
+  
+  for (const item of availableItems) {
+    const diff = Math.abs(item.price - targetPrice);
+    if (diff < minDiff) {
+      minDiff = diff;
+      bestItem = item;
+    }
+  }
+  
+  return bestItem;
 }
 
 async function finishSpin(outcome, totalBet, chanceUsed) {
@@ -896,14 +918,16 @@ async function finishSpin(outcome, totalBet, chanceUsed) {
   }
 
   // LOSE
-  removeBetPlayersFromCollection(betPlayersCopy);
-  state.coins -= spentCoins;
-  
-  const compPercent = calculateCompensation();
-  const refund = Math.floor((totalBet * compPercent) / 100);
-  
-  state.coins += refund;
+const hasNoWithdrawItem = betPlayersCopy.some(idx => {
+  const p = state.players[idx];
+  return p && p.no_withdraw === true;
+});
 
+removeBetPlayersFromCollection(betPlayersCopy);
+state.coins -= spentCoins;
+
+if (hasNoWithdrawItem) {
+  // Если в ставке были ресурсы — утешительный не дается
   AUDIO.lose();
   betPlayers = []; betCoins = 0; if(addCoinsInput) addCoinsInput.value = 0; upgradeTo = null; activeQuick = null;
   updateCoins(); renderBetSlots(); renderTargetBox();
@@ -912,20 +936,44 @@ async function finishSpin(outcome, totalBet, chanceUsed) {
 
   showGoldChainPanel(stakeForPanel, target, chanceUsed, stakePlayersForPanel);
   animTitle.textContent = "💥 Проигрыш";
-  animSub.textContent = "Рулетка компенсации...";
+  animSub.textContent = "Ресурсы не дают утешительный приз";
   
-  let ticks = 0;
-  const tickInterval = setInterval(() => {
-    animSub.innerHTML = `🎰 <span style="color:#ffd700">${(Math.random() * 50).toFixed(1)}%</span>`;
-    if (++ticks > 15) {
-      clearInterval(tickInterval);
-      animSub.innerHTML = `🎉 Выпало: <b>${compPercent.toFixed(1)}%</b> = +${refund} <img src="moneta.png" style="width: 14px; height: 14px; border-radius: 50%; vertical-align: middle;">`;
-    }
-  }, 80);
-
   await animSleep(1800);
   closeAnimOverlay();
+  return;
 }
+
+// Иначе выдаем утешительный предмет
+const compPercent = calculateCompensation();
+const compItem = getCompensationItem(totalBet, compPercent);
+
+if (compItem) {
+  state.players.push(snapshotPlayer(compItem));
+}
+
+AUDIO.lose();
+betPlayers = []; betCoins = 0; if(addCoinsInput) addCoinsInput.value = 0; upgradeTo = null; activeQuick = null;
+updateCoins(); renderBetSlots(); renderTargetBox();
+if (isTabActive("collection")) renderCollection();
+refreshUpgrade(); saveState();
+
+showGoldChainPanel(stakeForPanel, target, chanceUsed, stakePlayersForPanel);
+animTitle.textContent = "💥 Проигрыш";
+animSub.textContent = "Рулетка компенсации...";
+
+let ticks = 0;
+const tickInterval = setInterval(() => {
+  animSub.innerHTML = `🎰 <span style="color:#ffd700">${(Math.random() * 50).toFixed(1)}%</span>`;
+  if (++ticks > 15) {
+    clearInterval(tickInterval);
+    animSub.innerHTML = `🎉 Утешение: <b>${compItem.name}</b> (~${compItem.price} монет)`;
+    // Показываем карточку утешительного предмета
+    showAnimCard(compItem);
+  }
+}, 80);
+
+await animSleep(2200);
+closeAnimOverlay();
 
 const upgradeAnimOverlay = document.getElementById("upgradeAnimOverlay");
 const animCardWrap = document.getElementById("animCardWrap");
