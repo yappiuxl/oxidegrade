@@ -172,7 +172,7 @@ function snapshotPlayer(p) {
   const s = { name: p.name, price: p.price };
   if (p.img) s.img = p.img;
   if (p.favorite) s.favorite = true;
-  if (p.no_withdraw) s.no_withdraw = true; // <-- ДОБАВИТЬ ЭТО
+  if (p.no_withdraw) s.no_withdraw = true;
   return s;
 }
 
@@ -193,10 +193,9 @@ function registerNewImgTags(rootEl) {
   });
 }
 
-let USER_ID = null
+let USER_ID = null;
 
 window.addEventListener("DOMContentLoaded", () => {
-  // Ищем ID в адресной строке (если пришел от бота)
   const urlParams = new URLSearchParams(window.location.search);
   const urlId = urlParams.get('id');
   
@@ -208,12 +207,10 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 
   if (USER_ID) {
-    // Если ID есть, скрываем вход и запускаем игру
     const authScreen = document.getElementById("authScreen");
     if (authScreen) authScreen.style.display = "none";
     initGameUI();
-  } 
-  // Если ID нет — остаемся на экране входа
+  }
 });
 
 window.guestLogin = function() {
@@ -333,7 +330,6 @@ function openItemActionModal(playerIdx) {
   `;
   registerNewImgTags(infoEl);
   
-  // Скрываем или показываем кнопку вывода
   const withdrawBtn = document.getElementById("itemActionWithdrawBtn");
   if (withdrawBtn) {
     if (p.no_withdraw) {
@@ -345,6 +341,21 @@ function openItemActionModal(playerIdx) {
 
   document.getElementById("itemActionModal").classList.remove("hidden");
 }
+
+if(document.getElementById("itemActionClose")) {
+  document.getElementById("itemActionClose").addEventListener("click", () => {
+    document.getElementById("itemActionModal").classList.add("hidden");
+    _currentItemActionIdx = null;
+  });
+}
+
+if(document.getElementById("itemActionSellBtn")) {
+  document.getElementById("itemActionSellBtn").addEventListener("click", () => {
+    if (_currentItemActionIdx === null) return;
+    const p = state.players[_currentItemActionIdx];
+    if (!p) return;
+    
+    document.getElementById("itemActionModal").classList.add("hidden");
 
     const doSell = () => {
       removePlayerAtIndex(_currentItemActionIdx);
@@ -384,14 +395,12 @@ if(document.getElementById("itemActionWithdrawBtn")) {
       const data = await res.json();
       
       if (data.success) {
-        // Удаляем предмет локально
         removePlayerAtIndex(_currentItemActionIdx);
         updateCoins(); saveState();
         if (isTabActive("collection")) renderCollection();
         renderBetSlots(); refreshUpgrade();
         
         showToast(data.message, "#3fb950");
-        // Открываем окно с ТГ
         document.getElementById("withdrawModal").classList.remove("hidden");
       } else {
         alert(data.error);
@@ -905,7 +914,6 @@ async function finishSpin(outcome, totalBet, chanceUsed) {
   animTitle.textContent = "💥 Проигрыш";
   animSub.textContent = "Рулетка компенсации...";
   
-  // Анимация рулетки компенсации
   let ticks = 0;
   const tickInterval = setInterval(() => {
     animSub.innerHTML = `🎰 <span style="color:#ffd700">${(Math.random() * 50).toFixed(1)}%</span>`;
@@ -1263,4 +1271,4 @@ function startBalancePolling() {
       }
     } catch (e) {}
   }, 5000);
-        }
+                        }
