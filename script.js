@@ -1356,4 +1356,4 @@ function startBalancePolling() {
       }
     } catch (e) {}
   }, 5000);
-    }
+                         }
