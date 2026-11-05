@@ -887,36 +887,46 @@ async function finishSpin(outcome, totalBet, chanceUsed) {
   }
 
   // LOSE
-  const hasNoWithdrawItem = betPlayersCopy.some(idx => {
-    const p = state.players[idx];
-    return p && p.no_withdraw === true;
-  });
+const hasNoWithdrawItem = betPlayersCopy.some(idx => {
+  const p = state.players[idx];
+  return p && p.no_withdraw === true;
+});
 
-  removeBetPlayersFromCollection(betPlayersCopy);
-  state.coins -= spentCoins;
+removeBetPlayersFromCollection(betPlayersCopy);
+state.coins -= spentCoins;
 
-  let refund = 0;
-  if (totalBet >= 5) {
-    refund = Math.floor(totalBet / 100);
-  }
-  
-  state.coins += refund;
+// Компенсация: 1% от ставки (в 100 раз меньше), только если ставка >= 5
+let refund = 0;
+if (totalBet >= 5) {
+  refund = Math.round((totalBet / 100) * 100) / 100; // округляем до копеек
+}
 
-  AUDIO.lose();
-  betPlayers = []; betCoins = 0; if(addCoinsInput) addCoinsInput.value = 0; upgradeTo = null; activeQuick = null;
-  updateCoins(); renderBetSlots(); renderTargetBox();
-  if (isTabActive("collection")) renderCollection();
-  refreshUpgrade(); saveState();
+state.coins += refund;
 
-  showGoldChainPanel(stakeForPanel, target, chanceUsed, stakePlayersForPanel);
-  animTitle.textContent = "💥 Проигрыш";
-  
-  if (hasNoWithdrawItem) {
-    animSub.textContent = "Ресурсы не дают утешительный приз";
-    await animSleep(1800);
-    closeAnimOverlay();
-    return;
-  }
+AUDIO.lose();
+betPlayers = []; betCoins = 0; if(addCoinsInput) addCoinsInput.value = 0; upgradeTo = null; activeQuick = null;
+updateCoins(); renderBetSlots(); renderTargetBox();
+if (isTabActive("collection")) renderCollection();
+refreshUpgrade(); saveState();
+
+showGoldChainPanel(stakeForPanel, target, chanceUsed, stakePlayersForPanel);
+animTitle.textContent = "💥 Проигрыш";
+
+if (hasNoWithdrawItem) {
+  animSub.textContent = "Ресурсы не дают утешительный приз";
+  await animSleep(1800);
+  closeAnimOverlay();
+  return;
+}
+
+if (refund > 0) {
+  animSub.innerHTML = `Утешение: +${refund} <img src="moneta.png" style="width: 14px; height: 14px; border-radius: 50%; vertical-align: middle;">`;
+} else {
+  animSub.textContent = "Ставка слишком мала для утешения (мин. 5)";
+}
+
+await animSleep(1800);
+closeAnimOverlay();
 
   if (refund > 0) {
     animSub.innerHTML = `Утешение: +${refund} <img src="moneta.png" style="width: 14px; height: 14px; border-radius: 50%; vertical-align: middle;">`;
