@@ -195,6 +195,12 @@ function registerNewImgTags(rootEl) {
 
 let USER_ID = null;
 
+if (document.getElementById("weeklyRewardClose")) {
+  document.getElementById("weeklyRewardClose").addEventListener("click", () => {
+    document.getElementById("weeklyRewardModal").classList.add("hidden");
+  });
+}
+
 window.addEventListener("DOMContentLoaded", () => {
   const urlParams = new URLSearchParams(window.location.search);
   const urlId = urlParams.get('id');
@@ -1190,7 +1196,82 @@ if (document.getElementById("depositGoBtn")) {
 // --- ВЫВОД ПРЕДМЕТОВ ---
 const withdrawModal = document.getElementById("withdrawModal");
 if (document.getElementById("rewardBtn")) {
-  document.getElementById("rewardBtn").addEventListener("click", () => withdrawModal.classList.remove("hidden"));
+  document.getElementById("rewardBtn").addEventListener("click", () => {
+    // Открываем модалку наград
+    const modal = document.getElementById("weeklyRewardModal");
+    if (modal) {
+      modal.classList.remove("hidden");
+      loadWeeklyReward();
+    }
+  });
+}
+
+// Функция загрузки статуса награды
+async function loadWeeklyReward() {
+  try {
+    const res = await fetch('/api/reward-status/' + USER_ID);
+    const data = await res.json();
+    
+    if (data.error) return alert(data.error);
+    
+    document.getElementById("rewardProgress").textContent = `${data.current} / ${data.need}`;
+    document.getElementById("rewardItemName").textContent = data.items.join(" / ");
+    
+    // Показываем картинку (для выбора берем первую)
+    const firstItem = PLAYERS.find(p => p.name === data.items[0]);
+    if (firstItem) {
+      document.getElementById("rewardItemImg").innerHTML = playerImgTag(firstItem, "card-img");
+      registerNewImgTags(document.getElementById("rewardItemImg"));
+    }
+
+    const btn = document.getElementById("claimRewardBtn");
+    const choiceBox = document.getElementById("rewardChoiceBox");
+    
+    if (data.type === "choice") {
+      choiceBox.classList.remove("hidden");
+      choiceBox.innerHTML = data.items.map(name => {
+        const p = PLAYERS.find(x => x.name === name);
+        return `<div style="display:flex; flex-direction:column; align-items:center; cursor:pointer; padding:10px; border:2px solid #30363d; border-radius:8px;" onclick="window._selectedReward='${name}'; document.querySelectorAll('#rewardChoiceBox div').forEach(d=>d.style.borderColor='#30363d'); this.style.borderColor='#ffd700';">
+          <div style="width:40px; height:40px;">${playerImgTag(p, "")}</div>
+          <div style="font-size:12px; color:#fff; margin-top:5px;">${name}</div>
+        </div>`;
+      }).join("");
+      registerNewImgTags(choiceBox);
+      window._selectedReward = data.items[0]; // по умолчанию первый
+    } else {
+      choiceBox.classList.add("hidden");
+      window._selectedReward = null;
+    }
+
+    btn.disabled = !data.canClaim;
+    
+    // Привязываем обработчик на кнопку (чтобы не было дублей)
+    btn.onclick = async () => {
+      btn.disabled = true;
+      try {
+        const claimRes = await fetch('/api/claim-reward', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: USER_ID, choiceItem: window._selectedReward })
+        });
+        const claimData = await claimRes.json();
+        if (claimData.success) {
+          showToast(`Получена награда: ${claimData.item}`, "#3fb950");
+          document.getElementById("weeklyRewardModal").classList.add("hidden");
+          // Синхронизируем инвентарь
+          initGameUI(); 
+        } else {
+          alert(claimData.error);
+          btn.disabled = false;
+        }
+      } catch (e) {
+        alert("Ошибка сети");
+        btn.disabled = false;
+      }
+    };
+  } catch (e) {
+    console.error(e);
+  }
 }
 if (document.getElementById("withdrawClose")) {
   document.getElementById("withdrawClose").addEventListener("click", () => withdrawModal.classList.add("hidden"));
@@ -1282,4 +1363,4 @@ function startBalancePolling() {
       }
     } catch (e) {}
   }, 5000);
-}
+      }
