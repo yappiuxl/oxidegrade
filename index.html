@@ -279,6 +279,31 @@
         data-onauth="onTelegramAuth(user)" 
         data-request-access="write"></script>
 
+  <!-- МОДАЛКА ЕЖЕНЕДЕЛЬНЫХ НАГРАД -->
+<div id="weeklyRewardModal" class="modal-overlay hidden">
+  <div class="modal-content" style="max-width:400px; text-align:center;">
+    <div class="modal-header">
+      <h3>Еженедельная награда</h3>
+      <button id="weeklyRewardClose" class="close-btn">×</button>
+    </div>
+    
+    <div style="background:#1a1a1a; border-radius:8px; padding:15px; margin-bottom:20px;">
+      <div style="font-size:14px; color:#8b949e; margin-bottom:5px;">Требуемый депозит:</div>
+      <div style="font-size:18px; font-weight:bold; color:#ffd700;" id="rewardProgress">0/10</div>
+    </div>
+
+    <div style="background:#1a1a1a; border-radius:8px; padding:15px; margin-bottom:20px;">
+      <div style="font-size:14px; color:#8b949e; margin-bottom:5px;">Награда:</div>
+      <div id="rewardItemName" style="font-size:16px; font-weight:bold; color:#fff;">Ткань</div>
+      <div id="rewardItemImg" style="width:60px; height:60px; margin:10px auto 0;"></div>
+    </div>
+
+    <div id="rewardChoiceBox" class="hidden" style="display:flex; gap:10px; justify-content:center; margin-bottom:20px;"></div>
+
+    <button id="claimRewardBtn" class="btn-spin" style="width:100%; margin-top:0;" disabled>ЗАБРАТЬ</button>
+  </div>
+</div>
+
   <script src="script.js"></script>
 </body>
 </html>
